@@ -1,0 +1,212 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+    function isSignedIn() { return request.auth != null; }
+    function isAdmin() { return isSignedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid)); }
+    function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
+
+    // Admins
+    match /admins/{adminId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && request.auth.uid == adminId && request.auth.token.email == "andreafontesestudiofotografico@gmail.com";
+    }
+
+    function isValidUser(data) {
+      return data.size() >= 3 && data.size() <= 6
+        && data.keys().hasAll(['email', 'name', 'role'])
+        && data.email is string && data.email.size() <= 200
+        && data.name is string && data.name.size() <= 200
+        && data.role is string && data.role in ['client', 'admin']
+        && (data.get('phone', '') is string && data.get('phone', '').size() <= 50)
+        && (data.get('createdAt', request.time) == request.time);
+    }
+
+    match /users/{userId} {
+      allow get: if isSignedIn() && isValidId(userId) && (request.auth.uid == userId || isAdmin());
+      allow list: if isAdmin();
+      allow create: if isSignedIn() && isValidId(userId) && request.auth.uid == userId
+        && isValidUser(incoming())
+        && incoming().role == 'client'; // Prevent self-assigning admin
+      
+      allow update: if isSignedIn() && isValidId(userId) && (request.auth.uid == userId || isAdmin())
+        && isValidUser(incoming())
+        && (
+          (isAdmin()) ||
+          (incoming().diff(existing()).affectedKeys().hasOnly(['name', 'phone'])
+            && incoming().role == existing().role
+            && incoming().email == existing().email)
+        );
+      allow delete: if isAdmin();
+    }
+
+    function isValidPackage(data) {
+      return data.size() >= 5 && data.size() <= 7
+        && data.keys().hasAll(['name', 'price', 'description', 'features', 'isVisible'])
+        && data.name is string && data.name.size() <= 100
+        && data.price is number
+        && data.description is string && data.description.size() <= 1000
+        && data.features is list && data.features.size() <= 20 && (data.features.size() == 0 || data.features[0] is string)
+        && data.isVisible is bool
+        && (data.get('popular', false) is bool);
+    }
+
+    match /packages/{packageId} {
+      allow get: if isValidId(packageId); // Public read
+      allow list: if true; // Public read
+      allow create: if isAdmin() && isValidId(packageId) && isValidPackage(incoming());
+      allow update: if isAdmin() && isValidId(packageId) && isValidPackage(incoming());
+      allow delete: if isAdmin() && isValidId(packageId);
+    }
+
+    function isValidClient(data) {
+      return data.size() >= 2 && data.size() <= 8
+        && data.keys().hasAll(['name', 'status'])
+        && data.name is string && data.name.size() <= 200
+        && data.status is string && data.status in ['lead', 'active', 'archived']
+        && (data.get('email', '') is string && data.get('email', '').size() <= 200)
+        && (data.get('phone', '') is string && data.get('phone', '').size() <= 50)
+        && (data.get('notes', '') is string && data.get('notes', '').size() <= 2000)
+        && (data.get('uid', '') is string && data.get('uid', '').size() <= 128)
+        && (data.get('createdAt', request.time) == request.time);
+    }
+
+    match /clients/{clientId} {
+      allow get: if isAdmin() && isValidId(clientId);
+      allow list: if isAdmin();
+      allow create: if isAdmin() && isValidId(clientId) && isValidClient(incoming());
+      allow update: if isAdmin() && isValidId(clientId) && isValidClient(incoming());
+      allow delete: if isAdmin() && isValidId(clientId);
+    }
+
+    function isValidBooking(data) {
+      return data.size() >= 7 && data.size() <= 16
+        && data.keys().hasAll(['clientId', 'packageId', 'status', 'totalPrice', 'createdAt', 'updatedAt'])
+        && data.clientId is string && data.clientId.size() <= 128
+        && data.packageId is string && data.packageId.size() <= 128
+        && data.status is string && data.status in ['pending_payment', 'confirmed', 'session_done', 'in_selection', 'in_editing', 'ready', 'completed', 'cancelled']
+        && data.totalPrice is number
+        && (data.get('date', '') is string && data.get('date', '').size() <= 50)
+        && (data.get('notes', '') is string && data.get('notes', '').size() <= 2000)
+        && (data.get('clientName', '') is string && data.get('clientName', '').size() <= 200)
+        && (data.get('clientEmail', '') is string && data.get('clientEmail', '').size() <= 200)
+        && (data.get('clientPhone', '') is string && data.get('clientPhone', '').size() <= 60)
+        && (data.get('cpf', '') is string && data.get('cpf', '').size() <= 20)
+        && (data.get('packageName', '') is string && data.get('packageName', '').size() <= 100)
+        && (data.get('optionName', '') is string && data.get('optionName', '').size() <= 100)
+        && data.createdAt == request.time
+        && data.updatedAt == request.time;
+    }
+
+    function isValidBookingUpdate(data) {
+      return data.size() >= 7 && data.size() <= 16
+        && data.keys().hasAll(['clientId', 'packageId', 'status', 'totalPrice', 'createdAt', 'updatedAt'])
+        && data.clientId is string && data.clientId.size() <= 128
+        && data.packageId is string && data.packageId.size() <= 128
+        && data.status is string && data.status in ['pending_payment', 'confirmed', 'session_done', 'in_selection', 'in_editing', 'ready', 'completed', 'cancelled']
+        && data.totalPrice is number
+        && (data.get('paymentDetails', {}) is map)
+        && (data.get('date', '') is string && data.get('date', '').size() <= 50)
+        && (data.get('notes', '') is string && data.get('notes', '').size() <= 2000)
+        && (data.get('clientName', '') is string && data.get('clientName', '').size() <= 200)
+        && (data.get('clientEmail', '') is string && data.get('clientEmail', '').size() <= 200)
+        && (data.get('clientPhone', '') is string && data.get('clientPhone', '').size() <= 60)
+        && (data.get('cpf', '') is string && data.get('cpf', '').size() <= 20)
+        && (data.get('packageName', '') is string && data.get('packageName', '').size() <= 100)
+        && (data.get('optionName', '') is string && data.get('optionName', '').size() <= 100)
+        && data.updatedAt == request.time;
+    }
+
+    match /bookings/{bookingId} {
+      allow get: if isSignedIn() && isValidId(bookingId) && (isAdmin() || existing().clientId == request.auth.uid);
+      allow list: if isSignedIn() && (isAdmin() || resource.data.clientId == request.auth.uid);
+      allow create: if isSignedIn() && isValidId(bookingId) && isValidBooking(incoming())
+        && (isAdmin() || incoming().clientId == request.auth.uid)
+        && exists(/databases/$(database)/documents/packages/$(incoming().packageId));
+      allow update: if isSignedIn() && isValidId(bookingId) && isValidBookingUpdate(incoming())
+        && (
+          isAdmin() ||
+          (existing().clientId == request.auth.uid && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt']) && incoming().status == 'cancelled')
+        );
+      allow delete: if isAdmin() && isValidId(bookingId);
+    }
+
+    function isValidGallery(data) {
+      return data.size() >= 6 && data.size() <= 7
+        && data.keys().hasAll(['bookingId', 'clientId', 'name', 'status', 'createdAt', 'updatedAt'])
+        && data.bookingId is string && data.bookingId.size() <= 128
+        && data.clientId is string && data.clientId.size() <= 128
+        && data.name is string && data.name.size() <= 200
+        && data.status is string && data.status in ['in_selection', 'awaiting_selection', 'in_editing', 'ready']
+        && (data.get('expiresAt', request.time) is timestamp)
+        && data.createdAt == request.time
+        && data.updatedAt == request.time;
+    }
+
+    function isValidGalleryUpdate(data) {
+      return data.size() >= 6 && data.size() <= 7
+        && data.keys().hasAll(['bookingId', 'clientId', 'name', 'status', 'createdAt', 'updatedAt'])
+        && data.bookingId is string && data.bookingId.size() <= 128
+        && data.clientId is string && data.clientId.size() <= 128
+        && data.name is string && data.name.size() <= 200
+        && data.status is string && data.status in ['in_selection', 'awaiting_selection', 'in_editing', 'ready']
+        && (data.get('expiresAt', request.time) is timestamp)
+        && data.updatedAt == request.time;
+    }
+
+    match /galleries/{galleryId} {
+      allow get: if isSignedIn() && isValidId(galleryId) && (isAdmin() || existing().clientId == request.auth.uid);
+      allow list: if isSignedIn() && (isAdmin() || resource.data.clientId == request.auth.uid);
+      allow create: if isAdmin() && isValidId(galleryId) && isValidGallery(incoming())
+        && exists(/databases/$(database)/documents/bookings/$(incoming().bookingId));
+      allow update: if isSignedIn() && isValidId(galleryId) && isValidGalleryUpdate(incoming())
+        && (
+          isAdmin() ||
+          (existing().clientId == request.auth.uid && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt']) && incoming().status == 'in_editing' && existing().status == 'awaiting_selection')
+        );
+      allow delete: if isAdmin() && isValidId(galleryId);
+
+      function isValidPhoto(data) {
+        return data.size() >= 4 && data.size() <= 5
+          && data.keys().hasAll(['url', 'filename', 'status', 'uploadedAt'])
+          && data.url is string && data.url.size() <= 2000
+          && data.filename is string && data.filename.size() <= 500
+          && data.status is string && data.status in ['raw', 'selected_by_client', 'final']
+          && data.uploadedAt == request.time;
+      }
+      
+      function isValidPhotoUpdate(data) {
+        return data.size() >= 4 && data.size() <= 5
+          && data.keys().hasAll(['url', 'filename', 'status', 'uploadedAt'])
+          && data.url is string && data.url.size() <= 2000
+          && data.filename is string && data.filename.size() <= 500
+          && data.status is string && data.status in ['raw', 'selected_by_client', 'final'];
+      }
+
+      match /photos/{photoId} {
+        allow get: if isSignedIn() && isValidId(photoId) && (
+            isAdmin() || 
+            get(/databases/$(database)/documents/galleries/$(galleryId)).data.clientId == request.auth.uid
+        );
+        allow list: if isSignedIn() && (
+            isAdmin() || 
+            get(/databases/$(database)/documents/galleries/$(galleryId)).data.clientId == request.auth.uid
+        );
+        allow create: if isAdmin() && isValidId(photoId) && isValidPhoto(incoming());
+        allow update: if isSignedIn() && isValidId(photoId) && isValidPhotoUpdate(incoming())
+          && (
+            isAdmin() ||
+            (get(/databases/$(database)/documents/galleries/$(galleryId)).data.clientId == request.auth.uid
+              && incoming().diff(existing()).affectedKeys().hasOnly(['status'])
+              && get(/databases/$(database)/documents/galleries/$(galleryId)).data.status == 'in_selection')
+          );
+        allow delete: if isAdmin() && isValidId(photoId);
+      }
+    }
+  }
+}

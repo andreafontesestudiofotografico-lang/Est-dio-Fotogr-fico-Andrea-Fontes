@@ -1,0 +1,6 @@
+{
+  "name": "Andrea Fontes Estúdio Fotográfico",
+  "description": "Site completo e premium para estúdio fotográfico, inclui agendamentos, pacotes, galerias de clientes e painel CRM/Admin.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

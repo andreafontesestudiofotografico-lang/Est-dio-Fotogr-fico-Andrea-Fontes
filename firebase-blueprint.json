@@ -1,0 +1,130 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile.",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string" },
+        "name": { "type": "string" },
+        "phone": { "type": "string" },
+        "role": { "type": "string", "enum": ["client", "admin"] },
+        "createdAt": { "type": "timestamp" }
+      },
+      "required": ["email", "name", "role"]
+    },
+    "Admin": {
+      "title": "Admin",
+      "description": "Admin privileges marker document.",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string" },
+        "createdAt": { "type": "timestamp" }
+      },
+      "required": ["email", "createdAt"]
+    },
+    "Package": {
+      "title": "Package",
+      "description": "Photography package details.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "price": { "type": "number" },
+        "description": { "type": "string" },
+        "features": { "type": "array" },
+        "popular": { "type": "boolean" },
+        "isVisible": { "type": "boolean" }
+      },
+      "required": ["name", "price", "description", "features", "isVisible"]
+    },
+    "Client": {
+      "title": "Client CRM Record",
+      "description": "CRM data for a client",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "phone": { "type": "string" },
+        "notes": { "type": "string" },
+        "status": { "type": "string", "enum": ["lead", "active", "archived"] },
+        "uid": { "type": "string" },
+        "createdAt": { "type": "timestamp" }
+      },
+      "required": ["name", "status"]
+    },
+    "Booking": {
+      "title": "Booking",
+      "description": "A scheduled photoshoot.",
+      "type": "object",
+      "properties": {
+        "clientId": { "type": "string" },
+        "packageId": { "type": "string" },
+        "date": { "type": "string" },
+        "time": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending_payment", "confirmed", "completed", "cancelled"] },
+        "totalPrice": { "type": "number" },
+        "notes": { "type": "string" },
+        "createdAt": { "type": "timestamp" },
+        "updatedAt": { "type": "timestamp" }
+      },
+      "required": ["clientId", "packageId", "date", "status", "totalPrice", "createdAt", "updatedAt"]
+    },
+    "Gallery": {
+      "title": "Gallery",
+      "description": "A photo gallery for a client.",
+      "type": "object",
+      "properties": {
+        "bookingId": { "type": "string" },
+        "clientId": { "type": "string" },
+        "name": { "type": "string" },
+        "status": { "type": "string", "enum": ["in_selection", "awaiting_selection", "in_editing", "ready"] },
+        "expiresAt": { "type": "timestamp" },
+        "createdAt": { "type": "timestamp" },
+        "updatedAt": { "type": "timestamp" }
+      },
+      "required": ["bookingId", "clientId", "name", "status", "createdAt", "updatedAt"]
+    },
+    "Photo": {
+      "title": "Photo",
+      "description": "A single photo in a gallery.",
+      "type": "object",
+      "properties": {
+        "url": { "type": "string" },
+        "filename": { "type": "string" },
+        "status": { "type": "string", "enum": ["raw", "selected_by_client", "final"] },
+        "uploadedAt": { "type": "timestamp" }
+      },
+      "required": ["url", "filename", "status", "uploadedAt"]
+    }
+  },
+  "firestore": {
+    "users/{userId}": {
+      "schema": { "$ref": "User" },
+      "description": "User profile."
+    },
+    "admins/{adminId}": {
+      "schema": { "$ref": "Admin" },
+      "description": "Admin marker."
+    },
+    "packages/{packageId}": {
+      "schema": { "$ref": "Package" },
+      "description": "Available packages."
+    },
+    "clients/{clientId}": {
+      "schema": { "$ref": "Client" },
+      "description": "CRM clients."
+    },
+    "bookings/{bookingId}": {
+      "schema": { "$ref": "Booking" },
+      "description": "Scheduled bookings."
+    },
+    "galleries/{galleryId}": {
+      "schema": { "$ref": "Gallery" },
+      "description": "Photoshoot galleries."
+    },
+    "galleries/{galleryId}/photos/{photoId}": {
+      "schema": { "$ref": "Photo" },
+      "description": "Photos in a gallery."
+    }
+  }
+}
