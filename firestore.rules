@@ -128,8 +128,7 @@ service cloud.firestore {
       allow get: if isSignedIn() && isValidId(bookingId) && (isAdmin() || existing().clientId == request.auth.uid);
       allow list: if isSignedIn() && (isAdmin() || resource.data.clientId == request.auth.uid);
       allow create: if isSignedIn() && isValidId(bookingId) && isValidBooking(incoming())
-        && (isAdmin() || incoming().clientId == request.auth.uid)
-        && exists(/databases/$(database)/documents/packages/$(incoming().packageId));
+        && (isAdmin() || incoming().clientId == request.auth.uid);
       allow update: if isSignedIn() && isValidId(bookingId) && isValidBookingUpdate(incoming())
         && (
           isAdmin() ||
