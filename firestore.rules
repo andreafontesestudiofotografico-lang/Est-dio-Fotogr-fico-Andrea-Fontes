@@ -18,13 +18,13 @@ service cloud.firestore {
     }
 
     function isValidUser(data) {
-      return data.size() >= 3 && data.size() <= 6
-        && data.keys().hasAll(['email', 'name', 'role'])
+      return data.size() >= 4 && data.size() <= 6
+        && data.keys().hasAll(['email', 'name', 'role', 'createdAt'])
         && data.email is string && data.email.size() <= 200
         && data.name is string && data.name.size() <= 200
         && data.role is string && data.role in ['client', 'admin']
-        && (data.get('phone', '') is string && data.get('phone', '').size() <= 50)
-        && (data.get('createdAt', request.time) == request.time);
+        && data.createdAt is timestamp
+        && (data.get('phone', '') is string && data.get('phone', '').size() <= 50);
     }
 
     match /users/{userId} {
@@ -32,12 +32,14 @@ service cloud.firestore {
       allow list: if isAdmin();
       allow create: if isSignedIn() && isValidId(userId) && request.auth.uid == userId
         && isValidUser(incoming())
-        && incoming().role == 'client'; // Prevent self-assigning admin
+        && incoming().createdAt == request.time
+        && (incoming().role == 'client' || request.auth.token.email == "andreafontesestudiofotografico@gmail.com");
       
       allow update: if isSignedIn() && isValidId(userId) && (request.auth.uid == userId || isAdmin())
         && isValidUser(incoming())
+        && incoming().createdAt == existing().createdAt
         && (
-          (isAdmin()) ||
+          (isAdmin() || request.auth.token.email == "andreafontesestudiofotografico@gmail.com") ||
           (incoming().diff(existing()).affectedKeys().hasOnly(['name', 'phone'])
             && incoming().role == existing().role
             && incoming().email == existing().email)

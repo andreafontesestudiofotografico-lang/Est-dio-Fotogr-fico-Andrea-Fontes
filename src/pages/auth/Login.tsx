@@ -3,7 +3,7 @@ import { Camera } from "lucide-react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, sendPasswordResetEmail } from "firebase/auth";
 import { auth, db } from "../../services/firebase";
-import { doc, getDoc, setDoc } from "firebase/firestore";
+import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -65,7 +65,7 @@ export default function Login() {
           email: userCred.user.email,
           name: userCred.user.displayName || "Cliente",
           role: "client",
-          createdAt: new Date().toISOString()
+          createdAt: serverTimestamp()
         });
       }
 
@@ -87,14 +87,14 @@ export default function Login() {
         try {
           await setDoc(adminDocRef, {
             email: email,
-            createdAt: new Date().toISOString()
+            createdAt: serverTimestamp()
           });
           
           await setDoc(doc(db, "users", uid), {
             email: email,
             name: displayName || "Admin Andrea",
             role: "admin",
-            createdAt: new Date().toISOString()
+            createdAt: serverTimestamp()
           }, { merge: true });
           
           console.log("Admin account successfully bootstrapped.");
