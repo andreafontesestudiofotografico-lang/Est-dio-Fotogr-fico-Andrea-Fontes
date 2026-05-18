@@ -57,7 +57,7 @@ export default function Payment() {
             {/* QR Code */}
             <div className="shrink-0 flex flex-col items-center">
               <div className="w-48 h-48 bg-white border-2 border-dashed border-gray-300 p-2 mb-4 flex items-center justify-center relative">
-                <img src="https://i.postimg.cc/85B3mpnL/Whats-App-Image-2026-05-16-at-10-29-53.jpg" alt="QR Code PIX Estático" className="w-full h-full object-cover" />
+                <img src="https://i.postimg.cc/J43Q7mpg/Chat-GPT-Image-18-de-mai-de-2026-10-48-10.png" alt="QR Code PIX Estático" className="w-full h-full object-cover" />
               </div>
               <p className="text-xs font-black uppercase tracking-widest text-gray-500 text-center">Escaneie o QR Code</p>
             </div>

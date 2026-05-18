@@ -122,9 +122,9 @@ export default function Login() {
       <div className="hidden md:block relative bg-black">
         <div className="absolute inset-0 bg-black/40 z-10" />
         <img 
-          src="https://images.unsplash.com/photo-1517424633758-1f1981504958?q=80&w=1500&auto=format&fit=crop" 
+          src="https://i.postimg.cc/qq8WMy3K/Chat-GPT-Image-18-de-mai-de-2026-10-30-46.png" 
           alt="Login" 
-          className="w-full h-full object-cover"
+          className="w-full h-full object-cover animate-in fade-in duration-1000"
         />
         <div className="absolute bottom-12 left-12 z-20 text-white">
           <Camera className="w-12 h-12 mb-6" />

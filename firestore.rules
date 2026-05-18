@@ -101,8 +101,8 @@ service cloud.firestore {
         && (data.get('cpf', '') is string && data.get('cpf', '').size() <= 20)
         && (data.get('packageName', '') is string && data.get('packageName', '').size() <= 100)
         && (data.get('optionName', '') is string && data.get('optionName', '').size() <= 100)
-        && data.createdAt == request.time
-        && data.updatedAt == request.time;
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
     }
 
     function isValidBookingUpdate(data) {
@@ -121,7 +121,7 @@ service cloud.firestore {
         && (data.get('cpf', '') is string && data.get('cpf', '').size() <= 20)
         && (data.get('packageName', '') is string && data.get('packageName', '').size() <= 100)
         && (data.get('optionName', '') is string && data.get('optionName', '').size() <= 100)
-        && data.updatedAt == request.time;
+        && data.updatedAt is timestamp;
     }
 
     match /bookings/{bookingId} {

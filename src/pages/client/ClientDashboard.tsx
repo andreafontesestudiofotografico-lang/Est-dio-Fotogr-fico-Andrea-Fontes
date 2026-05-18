@@ -55,8 +55,8 @@ export default function ClientDashboard() {
     const currentIndex = statuses.indexOf(status);
     
     return [
-      { id: 'pending_payment', title: "Aguardando Pagamento", desc: "Pagamento do pacote fotográfico e contrato.", done: currentIndex > 0, current: currentIndex === 0 },
-      { id: 'confirmed', title: "Ensaio Agendado", desc: "Sua data está reservada.", done: currentIndex > 1, current: currentIndex === 1 },
+      { id: 'pending_payment', title: currentIndex > 0 ? "Pagamento Confirmado" : "Aguardando Pagamento", desc: "Pagamento do pacote fotográfico e contrato.", done: currentIndex > 0, current: currentIndex === 0 },
+      { id: 'confirmed', title: "Ensaio Agendado", desc: "Sua data está reservada.", done: currentIndex > 0, current: false },
       { id: 'session_done', title: "Ensaio Realizado", desc: "As fotos já foram feitas!", done: currentIndex > 2, current: currentIndex === 2 },
       { id: 'in_selection', title: "Em Seleção", desc: "Fotógrafa realizando a seleção inicial.", done: currentIndex > 3, current: currentIndex === 3 },
       { id: 'in_editing', title: "Em Edição", desc: "Aplicação da cor e estilo Andrea Fontes.", done: currentIndex > 4, current: currentIndex === 4 },
@@ -148,13 +148,13 @@ export default function ClientDashboard() {
                            <div key={i} className="relative z-10 flex gap-8 mb-12 last:mb-0">
                            <div className={`w-20 shrink-0 flex justify-end items-center`}>
                               {step.done ? (
-                                 <div className="w-8 h-8 bg-black flex items-center justify-center text-white">
+                                 <div className="w-8 h-8 bg-emerald-800 flex items-center justify-center text-white">
                                  <svg width="14" height="10" viewBox="0 0 14 10" fill="none" xmlns="http://www.w3.org/2000/svg">
                                     <path d="M1 5L4.5 8.5L13 1" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                                  </svg>
                                  </div>
                               ) : step.current ? (
-                                 <div className="w-8 h-8 bg-white border-4 border-black" />
+                                 <div className="w-8 h-8 bg-white border-4 border-emerald-800" />
                               ) : (
                                  <div className="w-8 h-8 bg-white border-2 border-gray-300" />
                               )}
