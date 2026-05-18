@@ -55,13 +55,13 @@ export default function ClientDashboard() {
     const currentIndex = statuses.indexOf(status);
     
     return [
-      { id: 'pending_payment', title: currentIndex > 0 ? "Pagamento Confirmado" : "Aguardando Pagamento", desc: "Pagamento do pacote fotográfico e contrato.", done: currentIndex > 0, current: currentIndex === 0 },
-      { id: 'confirmed', title: "Ensaio Agendado", desc: "Sua data está reservada.", done: currentIndex > 0, current: false },
-      { id: 'session_done', title: "Ensaio Realizado", desc: "As fotos já foram feitas!", done: currentIndex > 2, current: currentIndex === 2 },
-      { id: 'in_selection', title: "Em Seleção", desc: "Fotógrafa realizando a seleção inicial.", done: currentIndex > 3, current: currentIndex === 3 },
-      { id: 'in_editing', title: "Em Edição", desc: "Aplicação da cor e estilo Andrea Fontes.", done: currentIndex > 4, current: currentIndex === 4 },
-      { id: 'ready', title: "Galeria Liberada", desc: "Fotos prontas para visualização.", done: currentIndex > 5, current: currentIndex === 5 },
-      { id: 'completed', title: "Download Disponível", desc: "Baixe todas as suas fotos em alta resolução.", done: currentIndex === 6, current: currentIndex === 6 },
+      { id: 'pending_payment', title: currentIndex >= 1 ? "Pagamento Confirmado" : "Aguardando Pagamento", desc: "Pagamento do pacote fotográfico e contrato.", done: currentIndex >= 1, current: currentIndex === 0 },
+      { id: 'confirmed', title: "Ensaio Agendado", desc: "Sua data está reservada.", done: currentIndex >= 1, current: false },
+      { id: 'session_done', title: "Ensaio Realizado", desc: "As fotos já foram feitas!", done: currentIndex >= 2, current: currentIndex === 1 },
+      { id: 'in_selection', title: "Em Seleção", desc: "Fotógrafa realizando a seleção inicial.", done: currentIndex >= 3, current: currentIndex === 2 },
+      { id: 'in_editing', title: "Em Edição", desc: "Aplicação da cor e estilo Andrea Fontes.", done: currentIndex >= 4, current: currentIndex === 3 },
+      { id: 'ready', title: "Galeria Liberada", desc: "Fotos prontas para visualização.", done: currentIndex >= 5, current: currentIndex === 4 },
+      { id: 'completed', title: "Download Disponível", desc: "Baixe todas as suas fotos em alta resolução.", done: currentIndex >= 6, current: currentIndex === 5 },
     ];
   };
 
