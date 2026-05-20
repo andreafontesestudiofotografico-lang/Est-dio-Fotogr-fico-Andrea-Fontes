@@ -1,10 +1,45 @@
 import { useParams, Link } from "react-router-dom";
-import { photographyExperiences } from "./Packages";
+import { useEffect, useState } from "react";
+import { getPackage } from "../../services/cms";
+import { Package } from "../../types";
 import { Check, ArrowLeft, MessageCircle } from "lucide-react";
+import { photographyExperiences } from "./Packages";
 
 export default function PackageDetails() {
   const { id } = useParams<{ id: string }>();
-  const pkg = photographyExperiences.find(p => p.id === id);
+  const [pkg, setPkg] = useState<Package | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchData() {
+      if (!id) return;
+      try {
+        const data = await getPackage(id);
+        if (data) {
+          setPkg(data);
+        } else {
+          // Verify if it exists in local data
+          const local = photographyExperiences.find(p => p.id === id);
+          if (local) setPkg(local as any);
+        }
+      } catch (err) {
+        console.error("Failed to fetch package", err);
+        const local = photographyExperiences.find(p => p.id === id);
+        if (local) setPkg(local as any);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchData();
+  }, [id]);
+
+  if (loading) {
+    return (
+       <div className="min-h-screen flex items-center justify-center bg-white">
+          <div className="w-8 h-8 border-4 border-black border-t-transparent rounded-full animate-spin"></div>
+       </div>
+    );
+  }
 
   if (!pkg) {
     return (
@@ -20,6 +55,7 @@ export default function PackageDetails() {
 
   return (
     <div className="bg-white min-h-screen text-black animate-in fade-in duration-500">
+      {/*...rest remains exactly the same...*/}
       {/* Banner */}
       <div className="relative w-full h-[50vh] md:h-[70vh] bg-black">
         <img 
@@ -48,7 +84,7 @@ export default function PackageDetails() {
 
           <h2 className="text-sm font-black uppercase tracking-widest text-gray-400 mb-8">Informações Adicionais</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 mb-16 border-t border-gray-100 pt-8">
-            {Object.entries(pkg.info).map(([key, value]) => (
+            {Object.entries(pkg.info || {}).map(([key, value]) => (
               <div key={key}>
                 <h4 className="text-xs font-black uppercase tracking-widest mb-1 text-black">{key.replace('_', ' ')}</h4>
                 <p className="text-sm font-medium text-gray-500">{value as string}</p>
@@ -90,7 +126,7 @@ export default function PackageDetails() {
                 <div className="mb-6">
                   <h3 className="font-black text-xl uppercase tracking-tighter mb-2">{opt.name}</h3>
                   <div className="text-4xl font-black tracking-tighter">
-                    R$ {opt.price.toFixed(2).replace('.', ',')}
+                    R$ {Number(opt.price || 0).toFixed(2).replace('.', ',')}
                   </div>
                 </div>
 

@@ -5,10 +5,12 @@ import { ptBR } from "date-fns/locale";
 import { DayPicker } from "react-day-picker";
 import "react-day-picker/dist/style.css";
 import { ArrowLeft, Calendar as CalendarIcon, Clock } from "lucide-react";
-import { photographyExperiences } from "./Packages";
 import { auth, db } from "../../services/firebase";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { useAuth } from "../../services/AuthContext";
+import { getPackage, getCouponByCode } from "../../services/cms";
+import { Package, Coupon } from "../../types";
+import { photographyExperiences } from "./Packages";
 
 export default function Schedule() {
   const [searchParams] = useSearchParams();
@@ -16,8 +18,13 @@ export default function Schedule() {
   const { user } = useAuth();
   const pacoteId = searchParams.get("pacote");
   const opcaoIndexStr = searchParams.get("opcao");
+  const prodParam = searchParams.get("prod");
+  const cupomParam = searchParams.get("cupom");
 
-  const pkg = photographyExperiences.find((p) => p.id === pacoteId);
+  const [pkg, setPkg] = useState<Package | null>(null);
+  const [coupon, setCoupon] = useState<Coupon | null>(null);
+  const [loadingPkg, setLoadingPkg] = useState(true);
+
   const opcaoIndex = opcaoIndexStr ? parseInt(opcaoIndexStr) : 0;
   
   const [date, setDate] = useState<Date | undefined>(undefined);
@@ -25,6 +32,32 @@ export default function Schedule() {
   const [customTimeInput, setCustomTimeInput] = useState("");
   const [contractAccepted, setContractAccepted] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    async function init() {
+      if (!pacoteId) return;
+      try {
+        const data = await getPackage(pacoteId);
+        if (data) {
+          setPkg(data);
+        } else {
+          const local = photographyExperiences.find(p => p.id === pacoteId);
+          if (local) setPkg(local as any);
+        }
+        if (cupomParam) {
+          const cupomData = await getCouponByCode(cupomParam);
+          setCoupon(cupomData);
+        }
+      } catch (err) {
+        console.error("Erro fetch", err);
+        const local = photographyExperiences.find(p => p.id === pacoteId);
+        if (local) setPkg(local as any);
+      } finally {
+        setLoadingPkg(false);
+      }
+    }
+    init();
+  }, [pacoteId, cupomParam]);
 
   const availableHours = ["09:00", "10:30", "14:00", "15:30", "17:00"];
 
@@ -44,7 +77,6 @@ export default function Schedule() {
     setSelectedButtonTime(null);
     let inputVal = e.target.value;
     
-    // Permitir apagar o divisor ":" sem ficar travado
     if (customTimeInput.length > inputVal.length && 
         customTimeInput.replace(/\D/g, "") === inputVal.replace(/\D/g, "")) {
       inputVal = inputVal.slice(0, -1);
@@ -64,6 +96,14 @@ export default function Schedule() {
     setSelectedButtonTime(hour);
     setCustomTimeInput("");
   };
+  
+  if (loadingPkg) {
+    return (
+       <div className="min-h-screen flex items-center justify-center bg-white">
+          <div className="w-8 h-8 border-4 border-black border-t-transparent rounded-full animate-spin"></div>
+       </div>
+    );
+  }
 
   if (!pkg) {
     return (
@@ -73,12 +113,28 @@ export default function Schedule() {
       </div>
     );
   }
+  
+  // Calcular totais
+  const opcao = pkg.options[opcaoIndex];
+  let subtotal = opcao.price;
+  let productionTotal = (prodParam === '1' && pkg.productionPrice) ? pkg.productionPrice : 0;
+  let totalBeforeDiscount = subtotal + productionTotal;
+  let discountAmount = 0;
+
+  if (coupon) {
+    if (coupon.type === 'percentage') {
+      discountAmount = totalBeforeDiscount * (coupon.value / 100);
+    } else {
+      discountAmount = coupon.value;
+    }
+  }
+
+  let finalTotal = Math.max(0, totalBeforeDiscount - discountAmount);
 
   const handleConfirm = async () => {
     if (date && time && user) {
       setLoading(true);
       try {
-        const opcao = pkg.options[opcaoIndex];
         const dateStr = format(date, "yyyy-MM-dd");
         
         const cartDataRaw = sessionStorage.getItem("cartData");
@@ -95,7 +151,12 @@ export default function Schedule() {
           optionName: opcao.name,
           date: `${dateStr}T${time}:00`,
           status: "pending_payment",
-          totalPrice: opcao.price,
+          totalPrice: finalTotal,
+          productionSelected: prodParam === '1',
+          productionPrice: productionTotal,
+          couponApplied: coupon ? coupon.code : null,
+          discountAmount: discountAmount,
+          subtotal: subtotal,
           contractAccepted: true,
           contractAcceptedAt: serverTimestamp(),
           createdAt: serverTimestamp(),
@@ -104,7 +165,7 @@ export default function Schedule() {
         
         sessionStorage.removeItem("cartData");
         
-        navigate(`/pagamento?pacote=${pkg.id}&opcao=${opcaoIndex}&nome=${encodeURIComponent(cartData.nome || user.displayName || '')}&booking=${bookingRef.id}`);
+        navigate(`/pagamento?pacote=${pkg.id}&opcao=${opcaoIndex}&nome=${encodeURIComponent(cartData.nome || user.displayName || '')}&booking=${bookingRef.id}&total=${finalTotal}`);
       } catch (error) {
         console.error("Erro ao salvar agendamento:", error);
         alert("Ocorreu um erro ao processar o agendamento. Tente novamente.");

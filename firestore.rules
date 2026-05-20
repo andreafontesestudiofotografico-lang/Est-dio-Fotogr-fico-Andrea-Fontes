@@ -66,6 +66,23 @@ service cloud.firestore {
       allow delete: if isAdmin() && isValidId(packageId);
     }
 
+    // CMS rules
+    match /cms_packages/{packageId} {
+      allow get: if true;
+      allow list: if true;
+      allow write: if isAdmin();
+    }
+    match /cms_settings/{settingId} {
+      allow get: if true;
+      allow list: if true;
+      allow write: if isAdmin();
+    }
+    match /cms_coupons/{couponId} {
+      allow get: if true;
+      allow list: if true;
+      allow write: if isAdmin();
+    }
+
     function isValidClient(data) {
       return data.size() >= 2 && data.size() <= 8
         && data.keys().hasAll(['name', 'status'])

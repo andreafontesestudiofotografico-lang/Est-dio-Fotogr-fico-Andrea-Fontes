@@ -8,6 +8,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 import { GalleryManager } from "../../components/admin/GalleryManager";
+import { CMSManager } from "../../components/admin/CMSManager";
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState("overview");
@@ -353,7 +354,14 @@ export default function AdminDashboard() {
         )}
 
         {/* Placeholder for other tabs */}
-        {["finances", "settings"].includes(activeTab) && (
+        {activeTab === "settings" && (
+          <div className="animate-in fade-in">
+            <h1 className="font-black text-3xl tracking-tighter uppercase mb-8">CMS & Configurações</h1>
+            <CMSManager />
+          </div>
+        )}
+
+        {activeTab === "finances" && (
           <div className="h-full flex flex-col items-center justify-center text-gray-400">
             <h2 className="text-2xl font-black uppercase tracking-widest mb-4">Módulo em Desenvolvimento</h2>
             <p className="text-sm font-medium">Esta funcionalidade será ativada na próxima fase.</p>

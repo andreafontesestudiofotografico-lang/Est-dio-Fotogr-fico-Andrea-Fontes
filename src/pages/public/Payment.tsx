@@ -1,7 +1,9 @@
 import { Link, useSearchParams, useNavigate } from "react-router-dom";
-import { photographyExperiences } from "./Packages";
 import { Copy, Camera, CheckCircle2 } from "lucide-react";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { getPackage } from "../../services/cms";
+import { Package } from "../../types";
+import { photographyExperiences } from "./Packages";
 
 export default function Payment() {
   const [searchParams] = useSearchParams();
@@ -10,12 +12,44 @@ export default function Payment() {
   const opcaoIndexStr = searchParams.get("opcao");
   const nome = searchParams.get("nome");
   const bookingId = searchParams.get("booking");
+  const totalParam = searchParams.get("total");
   
   const [copied, setCopied] = useState(false);
+  const [pkg, setPkg] = useState<Package | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const pkg = photographyExperiences.find(p => p.id === pacoteId);
+  useEffect(() => {
+    async function loadData() {
+      if (!pacoteId) return;
+      try {
+        const data = await getPackage(pacoteId);
+        if (data) {
+          setPkg(data);
+        } else {
+          const local = photographyExperiences.find(p => p.id === pacoteId);
+          if (local) setPkg(local as any);
+        }
+      } catch(err) {
+        console.error(err);
+        const local = photographyExperiences.find(p => p.id === pacoteId);
+        if (local) setPkg(local as any);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadData();
+  }, [pacoteId]);
+
   const opcaoIndex = opcaoIndexStr ? parseInt(opcaoIndexStr) : 0;
   const opcao = pkg?.options[opcaoIndex];
+
+  if (loading) {
+    return (
+       <div className="min-h-screen flex items-center justify-center bg-white">
+          <div className="w-8 h-8 border-4 border-black border-t-transparent rounded-full animate-spin"></div>
+       </div>
+    );
+  }
 
   if (!pkg || !opcao) {
     return (
@@ -25,6 +59,8 @@ export default function Payment() {
       </div>
     );
   }
+
+  const finalTotal = totalParam ? parseFloat(totalParam) : opcao.price;
 
   const pixKey = "andreafontes494@gmail.com";
 
@@ -66,7 +102,7 @@ export default function Payment() {
             <div className="flex-1 w-full text-center md:text-left">
               <h2 className="text-lg font-black uppercase tracking-tight mb-2">Detalhes da Transação</h2>
               <div className="text-3xl font-black tracking-tighter mb-6">
-                R$ {opcao.price.toFixed(2).replace('.', ',')}
+                R$ {finalTotal.toFixed(2).replace('.', ',')}
               </div>
               
               <div className="mb-8 text-sm font-medium text-gray-600">

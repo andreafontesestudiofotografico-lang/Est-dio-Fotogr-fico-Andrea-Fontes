@@ -1,4 +1,7 @@
 import { Link } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { getPackages } from "../../services/cms";
+import { Package } from "../../types";
 
 export const photographyExperiences = [
   {
@@ -193,6 +196,37 @@ export const photographyExperiences = [
 ];
 
 export default function Packages() {
+  const [packages, setPackages] = useState<Package[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        const pkgs = await getPackages();
+        if (pkgs.length > 0) {
+          setPackages(pkgs.filter(p => p.active && p.showInPackages));
+        } else {
+          // Fallback if db is completely empty
+          setPackages(photographyExperiences as any[]);
+        }
+      } catch (err) {
+        console.error("Failed to fetch packages", err);
+        setPackages(photographyExperiences as any[]);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchData();
+  }, []);
+
+  if (loading) {
+    return (
+       <div className="min-h-screen flex items-center justify-center bg-white">
+          <div className="w-8 h-8 border-4 border-black border-t-transparent rounded-full animate-spin"></div>
+       </div>
+    );
+  }
+
   return (
     <div className="pb-32 pt-16 px-4 sm:px-8 max-w-[1600px] mx-auto w-full bg-white text-black animate-in fade-in duration-500">
       <div className="text-center mb-20 max-w-2xl mx-auto">
@@ -203,7 +237,7 @@ export default function Packages() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 md:gap-12">
-        {photographyExperiences.map((pkg) => (
+        {packages.map((pkg) => (
           <Link 
             to={`/pacote/${pkg.id}`}
             key={pkg.id} 

@@ -1,6 +1,9 @@
 import { Link } from "react-router-dom";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Autoplay, EffectFade, Pagination } from "swiper/modules";
+import { useEffect, useState } from "react";
+import { getPackages, getSiteSettings } from "../../services/cms";
+import { Package, SiteSettings } from "../../types";
 import { photographyExperiences } from "./Packages";
 
 import "swiper/css";
@@ -8,6 +11,30 @@ import "swiper/css/effect-fade";
 import "swiper/css/pagination";
 
 export default function Home() {
+  const [packages, setPackages] = useState<Package[]>([]);
+  const [settings, setSettings] = useState<SiteSettings | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        const [pkgs, config] = await Promise.all([getPackages(), getSiteSettings()]);
+        if (pkgs.length > 0) {
+          setPackages(pkgs.filter(p => p.active && p.showInHome));
+        } else {
+          setPackages(photographyExperiences as any[]);
+        }
+        setSettings(config);
+      } catch (err) {
+        console.error("Failed to fetch home data", err);
+        setPackages(photographyExperiences as any[]);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchData();
+  }, []);
+
   const heroSlides = [
     {
       image: "https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?q=80&w=2670&auto=format&fit=crop",
@@ -26,8 +53,25 @@ export default function Home() {
     }
   ];
 
-  const destaques = photographyExperiences.filter((p) => ["casamento", "gestante", "casal", "sensual"].includes(p.id));
-  const editoriais = photographyExperiences.filter((p) => ["publicitario", "formatura", "aniversario", "dia-das-maes"].includes(p.id));
+  // Fallback to initial logic if settings are missing or not fully populated yet
+  const b1Title = settings?.home?.block1?.title || "Experiências Mais Procuradas";
+  const b1Desc = settings?.home?.block1?.description || "Essência, autenticidade e conexão. Descubra os ensaios mais desejados do estúdio.";
+  const b2Title = settings?.home?.block2?.title || "Ensaios Editoriais";
+  const b2Desc = settings?.home?.block2?.description || "Produções exclusivas de alto padrão visual.";
+
+  // Splitting packages like before to maintain the same feeling if possible.
+  // We can just chunk them in half or take the first 4 for block 1 and the rest for block 2, or filter by specific property if added.
+  // For now, let's distribute them.
+  const destaques = packages.slice(0, 4);
+  const editoriais = packages.slice(4, 8); // At most 4 for the second block.
+
+  if (loading) {
+    return (
+       <div className="min-h-screen flex items-center justify-center bg-white">
+          <div className="w-8 h-8 border-4 border-black border-t-transparent rounded-full animate-spin"></div>
+       </div>
+    );
+  }
 
   return (
     <div className="w-full bg-white font-sans text-black animate-in fade-in duration-500">
@@ -80,9 +124,9 @@ export default function Home() {
       {/* Experiências Mais Procuradas */}
       <section className="py-24 max-w-[1600px] mx-auto px-4 sm:px-8">
         <div className="text-center mb-20 max-w-2xl mx-auto">
-          <h2 className="text-3xl md:text-5xl font-black tracking-tighter text-black mb-4 uppercase">Experiências Mais Procuradas</h2>
+          <h2 className="text-3xl md:text-5xl font-black tracking-tighter text-black mb-4 uppercase">{b1Title}</h2>
           <p className="text-sm md:text-base text-gray-500 font-medium tracking-wide">
-            Essência, autenticidade e conexão. Descubra os ensaios mais desejados do estúdio.
+            {b1Desc}
           </p>
         </div>
         
@@ -144,9 +188,9 @@ export default function Home() {
       <section className="py-24 max-w-[1600px] mx-auto px-4 sm:px-8">
         <div className="flex flex-col md:flex-row justify-between items-center md:items-end mb-16 gap-6">
           <div className="text-center md:text-left">
-             <h2 className="text-3xl md:text-5xl font-black tracking-tighter text-black uppercase mb-4">Ensaios Editoriais</h2>
+             <h2 className="text-3xl md:text-5xl font-black tracking-tighter text-black uppercase mb-4">{b2Title}</h2>
              <p className="text-sm md:text-base text-gray-500 font-medium tracking-wide">
-               Produções exclusivas de alto padrão visual.
+               {b2Desc}
              </p>
           </div>
           <Link to="/pacotes" className="text-xs font-black uppercase tracking-widest text-black hover:text-gray-500 border-b-2 border-black pb-1 transition-colors">
