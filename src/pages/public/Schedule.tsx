@@ -29,15 +29,25 @@ export default function Schedule() {
   const availableHours = ["09:00", "10:30", "14:00", "15:30", "17:00"];
 
   const handleCustomTimeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    let val = e.target.value.replace(/\D/g, "");
-    if (val.length > 2) {
-      val = val.substring(0, 2) + ":" + val.substring(2, 4);
-    }
-    setCustomTimeInput(val);
+    const inputVal = e.target.value;
+    const digitsOnly = inputVal.replace(/\D/g, "");
     
-    const isValid = /^([01][0-9]|2[0-3]):[0-5][0-9]$/.test(val);
+    let formatted = digitsOnly;
+    if (digitsOnly.length >= 3) {
+      formatted = digitsOnly.substring(0, 2) + ":" + digitsOnly.substring(2, 4);
+    } else if (inputVal.endsWith(":") && digitsOnly.length <= 2) {
+      formatted = digitsOnly + ":";
+    }
+    
+    setCustomTimeInput(formatted);
+    
+    const isValid = /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/.test(formatted);
     if (isValid) {
-      setTime(val);
+      let finalTime = formatted;
+      if (finalTime.length === 4) {
+        finalTime = "0" + finalTime;
+      }
+      setTime(finalTime);
     } else if (time && !availableHours.includes(time)) {
       setTime(null);
     }
@@ -151,6 +161,7 @@ export default function Schedule() {
                     <label className="block text-xs font-black uppercase tracking-widest text-gray-500 mb-3 text-center">Ou informe outro horário (HH:MM)</label>
                     <input
                       type="text"
+                      maxLength={5}
                       placeholder="Ex: 14:30"
                       value={customTimeInput}
                       onChange={handleCustomTimeChange}
