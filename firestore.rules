@@ -87,7 +87,7 @@ service cloud.firestore {
     }
 
     function isValidBooking(data) {
-      return data.size() >= 7 && data.size() <= 16
+      return data.size() >= 7 && data.size() <= 18
         && data.keys().hasAll(['clientId', 'packageId', 'status', 'totalPrice', 'createdAt', 'updatedAt'])
         && data.clientId is string && data.clientId.size() <= 128
         && data.packageId is string && data.packageId.size() <= 128
@@ -101,12 +101,14 @@ service cloud.firestore {
         && (data.get('cpf', '') is string && data.get('cpf', '').size() <= 20)
         && (data.get('packageName', '') is string && data.get('packageName', '').size() <= 100)
         && (data.get('optionName', '') is string && data.get('optionName', '').size() <= 100)
+        && (data.get('contractAccepted', false) is bool)
+        && (data.get('contractAcceptedAt', request.time) is timestamp)
         && data.createdAt is timestamp
         && data.updatedAt is timestamp;
     }
 
     function isValidBookingUpdate(data) {
-      return data.size() >= 7 && data.size() <= 16
+      return data.size() >= 7 && data.size() <= 18
         && data.keys().hasAll(['clientId', 'packageId', 'status', 'totalPrice', 'createdAt', 'updatedAt'])
         && data.clientId is string && data.clientId.size() <= 128
         && data.packageId is string && data.packageId.size() <= 128
@@ -121,6 +123,8 @@ service cloud.firestore {
         && (data.get('cpf', '') is string && data.get('cpf', '').size() <= 20)
         && (data.get('packageName', '') is string && data.get('packageName', '').size() <= 100)
         && (data.get('optionName', '') is string && data.get('optionName', '').size() <= 100)
+        && (data.get('contractAccepted', false) is bool)
+        && (data.get('contractAcceptedAt', request.time) is timestamp)
         && data.updatedAt is timestamp;
     }
 

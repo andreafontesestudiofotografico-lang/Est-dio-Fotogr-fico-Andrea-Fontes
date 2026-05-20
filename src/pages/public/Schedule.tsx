@@ -22,9 +22,31 @@ export default function Schedule() {
   
   const [date, setDate] = useState<Date | undefined>(undefined);
   const [time, setTime] = useState<string | null>(null);
+  const [customTimeInput, setCustomTimeInput] = useState("");
+  const [contractAccepted, setContractAccepted] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const availableHours = ["09:00", "10:30", "14:00", "15:30", "17:00"];
+
+  const handleCustomTimeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let val = e.target.value.replace(/\D/g, "");
+    if (val.length > 2) {
+      val = val.substring(0, 2) + ":" + val.substring(2, 4);
+    }
+    setCustomTimeInput(val);
+    
+    const isValid = /^([01][0-9]|2[0-3]):[0-5][0-9]$/.test(val);
+    if (isValid) {
+      setTime(val);
+    } else if (time && !availableHours.includes(time)) {
+      setTime(null);
+    }
+  };
+
+  const selectHour = (hour: string) => {
+    setTime(hour);
+    setCustomTimeInput("");
+  };
 
   if (!pkg) {
     return (
@@ -57,6 +79,8 @@ export default function Schedule() {
           date: `${dateStr}T${time}:00`,
           status: "pending_payment",
           totalPrice: opcao.price,
+          contractAccepted: true,
+          contractAcceptedAt: serverTimestamp(),
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
         });
@@ -108,25 +132,73 @@ export default function Schedule() {
             <div className="bg-gray-50 border border-gray-200 p-8">
               <h2 className="text-sm font-black uppercase tracking-widest border-b border-gray-200 pb-4 mb-6">Horários Disponíveis</h2>
               {date ? (
-                <div className="grid grid-cols-2 gap-3">
-                  {availableHours.map((hour) => (
-                    <button
-                      key={hour}
-                      onClick={() => setTime(hour)}
-                      className={`py-3 text-sm font-bold tracking-widest uppercase transition-colors ${
-                        time === hour ? "bg-black text-white" : "border border-gray-300 bg-white text-black hover:border-black"
+                <>
+                  <div className="grid grid-cols-2 gap-3 mb-6">
+                    {availableHours.map((hour) => (
+                      <button
+                        key={hour}
+                        onClick={() => selectHour(hour)}
+                        className={`py-3 text-sm font-bold tracking-widest uppercase transition-colors ${
+                          time === hour && availableHours.includes(hour) ? "bg-black text-white" : "border border-gray-300 bg-white text-black hover:border-black"
+                        }`}
+                      >
+                        {hour}
+                      </button>
+                    ))}
+                  </div>
+                  
+                  <div className="border-t border-gray-200 pt-6">
+                    <label className="block text-xs font-black uppercase tracking-widest text-gray-500 mb-3 text-center">Ou informe outro horário (HH:MM)</label>
+                    <input
+                      type="text"
+                      placeholder="Ex: 14:30"
+                      value={customTimeInput}
+                      onChange={handleCustomTimeChange}
+                      className={`w-full bg-white border p-3 text-sm font-bold text-center tracking-widest uppercase focus:outline-none transition-colors ${
+                        time === customTimeInput && time !== null ? "border-black bg-black text-white" : "border-gray-300 hover:border-black focus:border-black"
                       }`}
-                    >
-                      {hour}
-                    </button>
-                  ))}
-                </div>
+                    />
+                  </div>
+                </>
               ) : (
                 <div className="text-center py-8 text-gray-400 font-medium text-sm flex flex-col items-center gap-3">
                   <CalendarIcon className="w-6 h-6" />
                   Selecione uma data primeiro
                 </div>
               )}
+            </div>
+
+            <div className="bg-gray-50 border border-gray-200 p-8">
+               <h2 className="text-sm font-black uppercase tracking-widest border-b border-gray-200 pb-4 mb-6">Contrato de Serviço</h2>
+               
+               <div className="h-40 overflow-y-auto bg-white border border-gray-200 p-4 mb-6 text-sm text-gray-600 space-y-4">
+                 <p className="font-bold text-black uppercase text-xs">Cláusula 1 - Do Objeto</p>
+                 <p>O presente contrato tem como objeto a prestação de serviços fotográficos (Ensaio Fotográfico) pela CONTRATADA ao CONTRATANTE, de acordo com o pacote escolhido e condições pré-estabelecidas.</p>
+                 <p className="font-bold text-black uppercase text-xs">Cláusula 2 - Dos Direitos e Deveres</p>
+                 <p>O CONTRATANTE compromete-se a comparecer ao local e horário agendados. A CONTRATADA compromete-se a produzir e entregar o material digital no prazo estipulado após a seleção das fotos.</p>
+                 <p className="font-bold text-black uppercase text-xs">Cláusula 3 - Do Cancelamento e Remarcação</p>
+                 <p>Em caso de cancelamento com menos de 48h de antecedência, incidirá multa de 30% do valor do pacote. O valor do agendamento garante a reserva exclusiva da data.</p>
+                 <p className="font-bold text-black uppercase text-xs">Cláusula 4 - Do Uso de Imagem</p>
+                 <p>O CONTRATANTE autoriza o uso das imagens para o portfólio da CONTRATADA, salvo restrição expressa formalizada por escrito.</p>
+               </div>
+
+               <label className="flex items-start gap-3 cursor-pointer group">
+                  <div className="relative flex items-center justify-center mt-0.5">
+                    <input 
+                      type="checkbox" 
+                      className="peer sr-only"
+                      checked={contractAccepted}
+                      onChange={(e) => setContractAccepted(e.target.checked)}
+                    />
+                    <div className="w-5 h-5 border-2 border-gray-300 bg-white peer-checked:bg-black peer-checked:border-black transition-colors flex items-center justify-center" />
+                    <svg className="absolute w-3 h-3 text-white opacity-0 peer-checked:opacity-100 pointer-events-none" viewBox="0 0 14 10" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M1 5L4.5 8.5L13 1" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  </div>
+                  <span className="text-sm font-bold text-black group-hover:text-gray-700 transition-colors leading-relaxed">
+                    Li e estou de acordo com o contrato de prestação de serviços
+                  </span>
+               </label>
             </div>
 
             <div className="bg-gray-50 border border-gray-200 p-8">
@@ -144,7 +216,7 @@ export default function Schedule() {
 
                <button 
                   onClick={handleConfirm}
-                  disabled={!date || !time || loading}
+                  disabled={!date || !time || !contractAccepted || loading}
                   className="w-full py-5 bg-black text-white text-xs font-black uppercase tracking-widest disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-800 transition-colors"
                 >
                   {loading ? "Processando..." : "Prosseguir para Pagamento"}
