@@ -172,8 +172,8 @@ export default function Schedule() {
                       placeholder="Ex: 14:30"
                       value={customTimeInput}
                       onChange={handleCustomTimeChange}
-                      className={`w-full bg-white border p-3 text-sm font-bold text-center tracking-widest uppercase focus:outline-none transition-colors ${
-                        !selectedButtonTime && isCustomTimeValid ? "border-black bg-black text-white" : "border-gray-300 hover:border-black focus:border-black"
+                      className={`w-full bg-white text-black border p-3 text-sm font-bold text-center tracking-widest uppercase focus:outline-none transition-colors placeholder:text-gray-400 ${
+                        !selectedButtonTime && isCustomTimeValid ? "border-black ring-1 ring-black" : "border-gray-300 hover:border-black focus:border-black"
                       }`}
                     />
                   </div>
