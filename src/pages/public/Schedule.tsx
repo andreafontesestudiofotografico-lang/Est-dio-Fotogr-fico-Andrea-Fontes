@@ -21,40 +21,47 @@ export default function Schedule() {
   const opcaoIndex = opcaoIndexStr ? parseInt(opcaoIndexStr) : 0;
   
   const [date, setDate] = useState<Date | undefined>(undefined);
-  const [time, setTime] = useState<string | null>(null);
+  const [selectedButtonTime, setSelectedButtonTime] = useState<string | null>(null);
   const [customTimeInput, setCustomTimeInput] = useState("");
   const [contractAccepted, setContractAccepted] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const availableHours = ["09:00", "10:30", "14:00", "15:30", "17:00"];
 
+  const isCustomTimeValid = /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/.test(customTimeInput);
+
+  let time: string | null = null;
+  if (selectedButtonTime) {
+    time = selectedButtonTime;
+  } else if (isCustomTimeValid) {
+    time = customTimeInput;
+    if (time.length === 4) {
+      time = "0" + time;
+    }
+  }
+
   const handleCustomTimeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const inputVal = e.target.value;
+    setSelectedButtonTime(null);
+    let inputVal = e.target.value;
+    
+    // Permitir apagar o divisor ":" sem ficar travado
+    if (customTimeInput.length > inputVal.length && 
+        customTimeInput.replace(/\D/g, "") === inputVal.replace(/\D/g, "")) {
+      inputVal = inputVal.slice(0, -1);
+    }
+
     const digitsOnly = inputVal.replace(/\D/g, "");
     
     let formatted = digitsOnly;
     if (digitsOnly.length >= 3) {
       formatted = digitsOnly.substring(0, 2) + ":" + digitsOnly.substring(2, 4);
-    } else if (inputVal.endsWith(":") && digitsOnly.length <= 2) {
-      formatted = digitsOnly + ":";
     }
     
     setCustomTimeInput(formatted);
-    
-    const isValid = /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/.test(formatted);
-    if (isValid) {
-      let finalTime = formatted;
-      if (finalTime.length === 4) {
-        finalTime = "0" + finalTime;
-      }
-      setTime(finalTime);
-    } else if (time && !availableHours.includes(time)) {
-      setTime(null);
-    }
   };
 
   const selectHour = (hour: string) => {
-    setTime(hour);
+    setSelectedButtonTime(hour);
     setCustomTimeInput("");
   };
 
@@ -149,7 +156,7 @@ export default function Schedule() {
                         key={hour}
                         onClick={() => selectHour(hour)}
                         className={`py-3 text-sm font-bold tracking-widest uppercase transition-colors ${
-                          time === hour && availableHours.includes(hour) ? "bg-black text-white" : "border border-gray-300 bg-white text-black hover:border-black"
+                          selectedButtonTime === hour ? "bg-black text-white" : "border border-gray-300 bg-white text-black hover:border-black"
                         }`}
                       >
                         {hour}
@@ -166,7 +173,7 @@ export default function Schedule() {
                       value={customTimeInput}
                       onChange={handleCustomTimeChange}
                       className={`w-full bg-white border p-3 text-sm font-bold text-center tracking-widest uppercase focus:outline-none transition-colors ${
-                        time === customTimeInput && time !== null ? "border-black bg-black text-white" : "border-gray-300 hover:border-black focus:border-black"
+                        !selectedButtonTime && isCustomTimeValid ? "border-black bg-black text-white" : "border-gray-300 hover:border-black focus:border-black"
                       }`}
                     />
                   </div>
