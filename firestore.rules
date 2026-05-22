@@ -103,8 +103,37 @@ service cloud.firestore {
       allow delete: if isAdmin() && isValidId(clientId);
     }
 
+    function isValidContractSnapshot(snap) {
+      return snap is map 
+        && snap.keys().hasAll(['content', 'version', 'acceptedAt'])
+        && snap.content is string
+        && snap.content.size() <= 20000
+        && snap.version is number
+        && snap.acceptedAt is timestamp
+        && (snap.get('ipAddress', '') is string && snap.get('ipAddress', '').size() <= 50)
+        && (snap.get('userAgent', '') is string && snap.get('userAgent', '').size() <= 500)
+        && (snap.get('packageId', '') is string && snap.get('packageId', '').size() <= 128)
+        && (snap.get('packageName', '') is string && snap.get('packageName', '').size() <= 200)
+        && (snap.get('totalPrice', 0) is number)
+        && (snap.get('acceptedTerms', false) is bool);
+    }
+
+    function isValidReceiptData(rec) {
+      return rec is map
+        && rec.keys().hasAll(['receiptNumber', 'issuedBy', 'issuedAt', 'paymentMethod', 'amount', 'clientName', 'clientCpf', 'packageName'])
+        && rec.receiptNumber is string && rec.receiptNumber.size() <= 100
+        && rec.issuedBy is string && rec.issuedBy.size() <= 200
+        && rec.issuedAt is timestamp
+        && rec.paymentMethod is string && rec.paymentMethod.size() <= 100
+        && rec.amount is number
+        && rec.clientName is string && rec.clientName.size() <= 200
+        && rec.clientCpf is string && rec.clientCpf.size() <= 20
+        && rec.packageName is string && rec.packageName.size() <= 200
+        && (rec.get('updatedAt', request.time) is timestamp);
+    }
+
     function isValidBooking(data) {
-      return data.size() >= 7 && data.size() <= 25
+      return data.size() >= 7 && data.size() <= 27
         && data.keys().hasAll(['clientId', 'packageId', 'status', 'totalPrice', 'createdAt', 'updatedAt'])
         && data.clientId is string && data.clientId.size() <= 128
         && data.packageId is string && data.packageId.size() <= 128
@@ -127,12 +156,14 @@ service cloud.firestore {
         && (data.get('discountAmount', 0) is number)
         && (data.get('subtotal', 0) is number)
         && (data.get('chargedItems', []) is list && data.get('chargedItems', []).size() <= 20)
+        && (!('contractSnapshot' in data) || isValidContractSnapshot(data.contractSnapshot))
+        && (!('receiptData' in data) || isValidReceiptData(data.receiptData))
         && data.createdAt is timestamp
         && data.updatedAt is timestamp;
     }
 
     function isValidBookingUpdate(data) {
-      return data.size() >= 7 && data.size() <= 25
+      return data.size() >= 7 && data.size() <= 27
         && data.keys().hasAll(['clientId', 'packageId', 'status', 'totalPrice', 'createdAt', 'updatedAt'])
         && data.clientId is string && data.clientId.size() <= 128
         && data.packageId is string && data.packageId.size() <= 128
@@ -156,6 +187,8 @@ service cloud.firestore {
         && (data.get('discountAmount', 0) is number)
         && (data.get('subtotal', 0) is number)
         && (data.get('chargedItems', []) is list && data.get('chargedItems', []).size() <= 20)
+        && (!('contractSnapshot' in data) || isValidContractSnapshot(data.contractSnapshot))
+        && (!('receiptData' in data) || isValidReceiptData(data.receiptData))
         && data.updatedAt is timestamp;
     }
 

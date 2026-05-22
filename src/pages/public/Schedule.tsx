@@ -8,9 +8,9 @@ import { ArrowLeft, Calendar as CalendarIcon, Clock } from "lucide-react";
 import { auth, db } from "../../services/firebase";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { useAuth } from "../../services/AuthContext";
-import { getPackage, getCouponByCode } from "../../services/cms";
+import { getPackage, getCouponByCode, getSiteSettings } from "../../services/cms";
 import { calculatePricing } from "../../services/pricing";
-import { Package, Coupon } from "../../types";
+import { Package, Coupon, SiteSettings } from "../../types";
 import { photographyExperiences } from "./Packages";
 
 export default function Schedule() {
@@ -24,6 +24,7 @@ export default function Schedule() {
 
   const [pkg, setPkg] = useState<Package | null>(null);
   const [coupon, setCoupon] = useState<Coupon | null>(null);
+  const [siteSettings, setSiteSettings] = useState<SiteSettings | null>(null);
   const [loadingPkg, setLoadingPkg] = useState(true);
 
   const opcaoIndex = opcaoIndexStr ? parseInt(opcaoIndexStr) : 0;
@@ -49,6 +50,8 @@ export default function Schedule() {
           const cupomData = await getCouponByCode(cupomParam);
           setCoupon(cupomData);
         }
+        const settings = await getSiteSettings();
+        setSiteSettings(settings);
       } catch (err) {
         console.error("Erro fetch", err);
         const local = photographyExperiences.find(p => p.id === pacoteId);
@@ -132,6 +135,32 @@ export default function Schedule() {
         const cartDataRaw = sessionStorage.getItem("cartData");
         const cartData = cartDataRaw ? JSON.parse(cartDataRaw) : {};
 
+        let contractSnapshotData = undefined;
+        if (siteSettings?.contractTemplate) {
+          const clientName = cartData.nome || user.displayName || "Cliente";
+          const clientCpf = cartData.cpf || "";
+          const content = siteSettings.contractTemplate.content
+            .replace(/\{CLIENT_NAME\}/g, clientName)
+            .replace(/\{CLIENT_CPF\}/g, clientCpf)
+            .replace(/\{PACKAGE_NAME\}/g, pkg.title)
+            .replace(/\{PACKAGE_OPTION\}/g, opcao.name)
+            .replace(/\{DATE\}/g, `${dateStr} ${time}`)
+            .replace(/\{TOTAL_PRICE\}/g, pricing.total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }))
+            .replace(/\{PAYMENT_METHOD\}/g, 'A definir no Checkout');
+
+          contractSnapshotData = {
+            content,
+            version: siteSettings.contractTemplate.version,
+            acceptedAt: serverTimestamp(),
+            ipAddress: '127.0.0.1', // Placeholder if no backend lookup
+            userAgent: navigator.userAgent,
+            packageId: pkg.id,
+            packageName: pkg.title,
+            totalPrice: pricing.total,
+            acceptedTerms: true
+          };
+        }
+
         const bookingRef = await addDoc(collection(db, "bookings"), {
           clientId: user.uid,
           clientName: cartData.nome || user.displayName || "Cliente",
@@ -153,6 +182,7 @@ export default function Schedule() {
           chargedItems: pricing.chargedItems,
           contractAccepted: true,
           contractAcceptedAt: serverTimestamp(),
+          ...(contractSnapshotData ? { contractSnapshot: contractSnapshotData } : {}),
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
         });
@@ -244,15 +274,19 @@ export default function Schedule() {
             <div className="bg-gray-50 border border-gray-200 p-8">
                <h2 className="text-sm font-black uppercase tracking-widest border-b border-gray-200 pb-4 mb-6">Contrato de Serviço</h2>
                
-               <div className="h-40 overflow-y-auto bg-white border border-gray-200 p-4 mb-6 text-sm text-gray-600 space-y-4">
-                 <p className="font-bold text-black uppercase text-xs">Cláusula 1 - Do Objeto</p>
-                 <p>O presente contrato tem como objeto a prestação de serviços fotográficos (Ensaio Fotográfico) pela CONTRATADA ao CONTRATANTE, de acordo com o pacote escolhido e condições pré-estabelecidas.</p>
-                 <p className="font-bold text-black uppercase text-xs">Cláusula 2 - Dos Direitos e Deveres</p>
-                 <p>O CONTRATANTE compromete-se a comparecer ao local e horário agendados. A CONTRATADA compromete-se a produzir e entregar o material digital no prazo estipulado após a seleção das fotos.</p>
-                 <p className="font-bold text-black uppercase text-xs">Cláusula 3 - Do Cancelamento e Remarcação</p>
-                 <p>Em caso de cancelamento com menos de 48h de antecedência, incidirá multa de 30% do valor do pacote. O valor do agendamento garante a reserva exclusiva da data.</p>
-                 <p className="font-bold text-black uppercase text-xs">Cláusula 4 - Do Uso de Imagem</p>
-                 <p>O CONTRATANTE autoriza o uso das imagens para o portfólio da CONTRATADA, salvo restrição expressa formalizada por escrito.</p>
+               <div className="h-40 overflow-y-auto bg-white border border-gray-200 p-4 mb-6 text-sm text-gray-600 space-y-4 whitespace-pre-wrap font-mono">
+                 {siteSettings?.contractTemplate ? (
+                    siteSettings.contractTemplate.content
+                      .replace(/\{CLIENT_NAME\}/g, "[Seu Nome]")
+                      .replace(/\{CLIENT_CPF\}/g, "[Seu CPF]")
+                      .replace(/\{PACKAGE_NAME\}/g, pkg.title)
+                      .replace(/\{PACKAGE_OPTION\}/g, opcao.name)
+                      .replace(/\{DATE\}/g, `${date ? format(date, "dd/MM/yyyy") : '[Data]'} ${time || '[Horário]'}`)
+                      .replace(/\{TOTAL_PRICE\}/g, pricing.total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }))
+                      .replace(/\{PAYMENT_METHOD\}/g, '[A definir]')
+                 ) : (
+                    "O contrato será gerado no momento do pagamento."
+                 )}
                </div>
 
                <label className="flex items-start gap-3 cursor-pointer group">

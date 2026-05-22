@@ -8,6 +8,7 @@ import { useAuth } from "../../services/AuthContext";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { ClientGallery } from "../../components/client/ClientGallery";
+import { DocumentDownloader } from "../../components/client/DocumentDownloader";
 
 export default function ClientDashboard() {
   const navigate = useNavigate();
@@ -166,6 +167,8 @@ export default function ClientDashboard() {
                            </div>
                         ))}
                      </div>
+                     
+                     <DocumentDownloader booking={booking} />
                   </div>
                );
             })
@@ -175,20 +178,8 @@ export default function ClientDashboard() {
         {/* Sidebar */}
         <div className="lg:col-span-4 space-y-8">
           <div className="bg-gray-50 border border-gray-200 p-8">
-            <h2 className="font-black uppercase tracking-widest text-sm mb-6 border-b border-gray-200 pb-4">Seus Documentos</h2>
+            <h2 className="font-black uppercase tracking-widest text-sm mb-6 border-b border-gray-200 pb-4">Seus Guias</h2>
             <ul className="space-y-4">
-              <li>
-                <a href="#" className="flex items-center gap-3 text-sm font-medium hover:text-gray-500 transition-colors">
-                  <FileText className="w-4 h-4 shrink-0" />
-                  Contrato de Prestação de Serviços
-                </a>
-              </li>
-              <li>
-                <a href="#" className="flex items-center gap-3 text-sm font-medium hover:text-gray-500 transition-colors">
-                  <FileText className="w-4 h-4 shrink-0" />
-                  Comprovante de Pagamento (50%)
-                </a>
-              </li>
               <li>
                 <a href="#" className="flex items-center gap-3 text-sm font-medium hover:text-gray-500 transition-colors">
                   <ArrowDownToLine className="w-4 h-4 shrink-0" />

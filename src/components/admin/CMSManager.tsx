@@ -401,6 +401,7 @@ function PackagesManager() {
 function SiteSettingsManager() {
   const [settings, setSettings] = useState<SiteSettings | null>(null);
   const [saving, setSaving] = useState(false);
+  const [subTab, setSubTab] = useState<'texts' | 'contract'>('texts');
 
   useEffect(() => {
     getSiteSettings().then(s => {
@@ -422,10 +423,30 @@ function SiteSettingsManager() {
     });
   };
 
+  const handleContractChange = (value: string) => {
+    if (!settings) return;
+    setSettings({
+      ...settings,
+      contractTemplate: {
+        content: value,
+        version: settings.contractTemplate?.version || 1,
+        updatedAt: new Date().toISOString()
+      }
+    });
+  };
+
   const save = async () => {
     if (!settings) return;
     setSaving(true);
-    await saveSiteSettings(settings);
+    
+    const sToSave = { ...settings };
+    if (subTab === 'contract' && sToSave.contractTemplate) {
+      sToSave.contractTemplate.version = (sToSave.contractTemplate.version || 0) + 1;
+      sToSave.contractTemplate.updatedAt = new Date().toISOString();
+    }
+    
+    await saveSiteSettings(sToSave);
+    if (sToSave) setSettings(sToSave);
     setSaving(false);
     alert("Configurações salvas.");
   };
@@ -433,42 +454,86 @@ function SiteSettingsManager() {
   if (!settings) return <div>Carregando...</div>;
 
   return (
-    <div className="max-w-2xl">
-      <h2 className="text-xl font-black uppercase mb-6">Textos da Home</h2>
-      
-      <div className="space-y-8">
-        <div className="border border-gray-200 p-6 bg-white">
-          <h3 className="text-sm font-black uppercase tracking-widest text-gray-400 mb-4">Bloco 1 (Destaques)</h3>
-          <div className="space-y-4">
-            <div>
-              <label className="block text-xs font-bold uppercase mb-2">Título</label>
-              <input type="text" className="w-full border border-gray-300 p-2 text-sm focus:border-black outline-none" 
-                     value={settings.home.block1.title} onChange={e => handleChange('block1', 'title', e.target.value)} />
+    <div className="max-w-4xl">
+      <div className="flex gap-4 mb-8">
+        <button 
+          onClick={() => setSubTab('texts')}
+          className={`text-xs font-black uppercase tracking-widest pb-2 border-b-2 transition-colors ${subTab === 'texts' ? 'border-black text-black' : 'border-transparent text-gray-400 hover:text-black'}`}
+        >
+          Textos do Site
+        </button>
+        <button 
+          onClick={() => setSubTab('contract')}
+          className={`text-xs font-black uppercase tracking-widest pb-2 border-b-2 transition-colors ${subTab === 'contract' ? 'border-black text-black' : 'border-transparent text-gray-400 hover:text-black'}`}
+        >
+          Template do Contrato
+        </button>
+      </div>
+
+      {subTab === 'texts' ? (
+        <div className="space-y-8 max-w-2xl">
+          <div className="border border-gray-200 p-6 bg-white">
+            <h3 className="text-sm font-black uppercase tracking-widest text-gray-400 mb-4">Bloco 1 (Destaques)</h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold uppercase mb-2">Título</label>
+                <input type="text" className="w-full border border-gray-300 p-2 text-sm focus:border-black outline-none" 
+                       value={settings.home.block1.title} onChange={e => handleChange('block1', 'title', e.target.value)} />
+              </div>
+              <div>
+                <label className="block text-xs font-bold uppercase mb-2">Descrição</label>
+                <textarea className="w-full border border-gray-300 p-2 text-sm focus:border-black outline-none h-20" 
+                          value={settings.home.block1.description} onChange={e => handleChange('block1', 'description', e.target.value)} />
+              </div>
             </div>
-            <div>
-              <label className="block text-xs font-bold uppercase mb-2">Descrição</label>
-              <textarea className="w-full border border-gray-300 p-2 text-sm focus:border-black outline-none h-20" 
-                        value={settings.home.block1.description} onChange={e => handleChange('block1', 'description', e.target.value)} />
+          </div>
+
+          <div className="border border-gray-200 p-6 bg-white">
+            <h3 className="text-sm font-black uppercase tracking-widest text-gray-400 mb-4">Bloco 2 (Editoriais)</h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold uppercase mb-2">Título</label>
+                <input type="text" className="w-full border border-gray-300 p-2 text-sm focus:border-black outline-none" 
+                       value={settings.home.block2.title} onChange={e => handleChange('block2', 'title', e.target.value)} />
+              </div>
+              <div>
+                <label className="block text-xs font-bold uppercase mb-2">Descrição</label>
+                <textarea className="w-full border border-gray-300 p-2 text-sm focus:border-black outline-none h-20" 
+                          value={settings.home.block2.description} onChange={e => handleChange('block2', 'description', e.target.value)} />
+              </div>
             </div>
           </div>
         </div>
-
-        <div className="border border-gray-200 p-6 bg-white">
-          <h3 className="text-sm font-black uppercase tracking-widest text-gray-400 mb-4">Bloco 2 (Editoriais)</h3>
-          <div className="space-y-4">
-            <div>
-              <label className="block text-xs font-bold uppercase mb-2">Título</label>
-              <input type="text" className="w-full border border-gray-300 p-2 text-sm focus:border-black outline-none" 
-                     value={settings.home.block2.title} onChange={e => handleChange('block2', 'title', e.target.value)} />
-            </div>
-            <div>
-              <label className="block text-xs font-bold uppercase mb-2">Descrição</label>
-              <textarea className="w-full border border-gray-300 p-2 text-sm focus:border-black outline-none h-20" 
-                        value={settings.home.block2.description} onChange={e => handleChange('block2', 'description', e.target.value)} />
-            </div>
+      ) : (
+        <div className="space-y-6">
+          <div className="bg-blue-50 text-blue-800 p-4 border border-blue-200 text-sm font-medium">
+            <p className="mb-2 font-bold uppercase text-xs tracking-widest">Variáveis Disponíveis:</p>
+            <p>Você pode usar as seguintes variáveis no texto (elas serão substituídas no PDF gerado):</p>
+            <ul className="list-disc pl-5 mt-2 font-mono text-xs">
+              <li>{'{CLIENT_NAME}'} - Nome do cliente</li>
+              <li>{'{CLIENT_CPF}'} - CPF do cliente</li>
+              <li>{'{PACKAGE_NAME}'} - Nome do pacote</li>
+              <li>{'{PACKAGE_OPTION}'} - Opção do pacote</li>
+              <li>{'{DATE}'} - Data do ensaio</li>
+              <li>{'{TOTAL_PRICE}'} - Valor total R$</li>
+              <li>{'{PAYMENT_METHOD}'} - Forma de pagamento</li>
+            </ul>
+          </div>
+          
+          <div>
+            <label className="block text-xs font-black uppercase tracking-widest mb-2">Conteúdo do Contrato (Markdown / Texto)</label>
+            <textarea 
+              className="w-full border border-gray-300 p-4 text-sm font-medium focus:border-black outline-none font-mono min-h-[500px]"
+              value={settings.contractTemplate?.content || ''}
+              onChange={e => handleContractChange(e.target.value)}
+              placeholder="Digite os termos do contrato de prestação de serviços..."
+            />
+            <p className="text-xs text-gray-400 mt-2 font-medium">Versão atual: {settings.contractTemplate?.version || 0}</p>
           </div>
         </div>
+      )}
 
+      <div className="mt-8">
         <button onClick={save} disabled={saving} className="bg-black text-white px-8 py-4 text-xs font-black uppercase tracking-widest flex items-center gap-2 hover:bg-gray-800 disabled:opacity-50">
           <Save className="w-4 h-4" /> {saving ? "Salvando..." : "Salvar Configurações"}
         </button>

@@ -62,7 +62,33 @@ export interface SiteSettings {
       description: string;
     };
   };
+  contractTemplate?: {
+    content: string;
+    version: number;
+    updatedAt: string;
+  };
 }
+
+export interface ContractSnapshot {
+  content: string;
+  version: number;
+  acceptedAt: any; // Firestore Timestamp
+  ipAddress?: string;
+  userAgent?: string;
+}
+
+export interface ReceiptData {
+  receiptNumber: string;
+  issuedBy: string;
+  issuedAt: any; // Firestore Timestamp
+  paymentMethod: string;
+  amount: number;
+  clientName: string;
+  clientCpf: string;
+  packageName: string;
+  updatedAt?: any; // Firestore Timestamp
+}
+
 
 export interface Coupon {
   id: string;

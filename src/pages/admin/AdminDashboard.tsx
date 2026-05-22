@@ -9,6 +9,7 @@ import { ptBR } from "date-fns/locale";
 
 import { GalleryManager } from "../../components/admin/GalleryManager";
 import { CMSManager } from "../../components/admin/CMSManager";
+import { ReceiptManagerModal } from "../../components/admin/ReceiptManagerModal";
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState("overview");
@@ -17,6 +18,7 @@ export default function AdminDashboard() {
   const [bookings, setBookings] = useState<any[]>([]);
   const [clients, setClients] = useState<any>({});
   const [loading, setLoading] = useState(true);
+  const [receiptModalBooking, setReceiptModalBooking] = useState<any | null>(null);
 
   const handleLogout = async () => {
     try {
@@ -272,7 +274,15 @@ export default function AdminDashboard() {
                         </td>
                         <td className="p-6 text-gray-500 font-medium text-xs">{format(dateObj, "dd MMM, HH:mm", { locale: ptBR })}</td>
                         <td className="p-6">
-                          <div className="flex justify-end gap-3 opacity-100 transition-opacity">
+                          <div className="flex justify-end gap-3 opacity-100 transition-opacity items-center">
+                             {['confirmed', 'session_done', 'in_selection', 'in_editing', 'ready', 'completed'].includes(row.status) && (
+                                <button
+                                   onClick={() => setReceiptModalBooking(row)}
+                                   className="text-xs font-bold uppercase tracking-widest text-black underline hover:text-gray-600 transition-colors mr-2"
+                                >
+                                   Recibo
+                                </button>
+                             )}
                              <select
                                 value={row.status}
                                 onChange={(e) => handleUpdateStatus(row.id, e.target.value)}
@@ -369,6 +379,17 @@ export default function AdminDashboard() {
         )}
 
       </main>
+
+      {receiptModalBooking && (
+         <ReceiptManagerModal 
+            booking={receiptModalBooking}
+            onClose={() => setReceiptModalBooking(null)}
+            onUpdate={() => {
+               // The listener will automatically update the bookings list
+               setReceiptModalBooking(null);
+            }}
+         />
+      )}
     </div>
   );
 }
