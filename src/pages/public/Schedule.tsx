@@ -1,5 +1,5 @@
 import { Link, useSearchParams, useNavigate } from "react-router-dom";
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { format, addDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { DayPicker } from "react-day-picker";
@@ -9,6 +9,7 @@ import { auth, db } from "../../services/firebase";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { useAuth } from "../../services/AuthContext";
 import { getPackage, getCouponByCode } from "../../services/cms";
+import { calculatePricing } from "../../services/pricing";
 import { Package, Coupon } from "../../types";
 import { photographyExperiences } from "./Packages";
 
@@ -116,20 +117,11 @@ export default function Schedule() {
   
   // Calcular totais
   const opcao = pkg.options[opcaoIndex];
-  let subtotal = opcao.price;
-  let productionTotal = (prodParam === '1' && pkg.productionPrice) ? pkg.productionPrice : 0;
-  let totalBeforeDiscount = subtotal + productionTotal;
-  let discountAmount = 0;
+  
+  const pricingParam = prodParam || "";
+  const pricing = calculatePricing(pkg, opcaoIndex, pricingParam, coupon);
 
-  if (coupon) {
-    if (coupon.type === 'percentage') {
-      discountAmount = totalBeforeDiscount * (coupon.value / 100);
-    } else {
-      discountAmount = coupon.value;
-    }
-  }
-
-  let finalTotal = Math.max(0, totalBeforeDiscount - discountAmount);
+  const finalTotal = pricing.total;
 
   const handleConfirm = async () => {
     if (date && time && user) {
@@ -151,12 +143,14 @@ export default function Schedule() {
           optionName: opcao.name,
           date: `${dateStr}T${time}:00`,
           status: "pending_payment",
-          totalPrice: finalTotal,
-          productionSelected: prodParam === '1',
-          productionPrice: productionTotal,
-          couponApplied: coupon ? coupon.code : null,
-          discountAmount: discountAmount,
-          subtotal: subtotal,
+          totalPrice: pricing.total,
+          productionSelected: pricing.selectedProductions.length > 0,
+          productionPrice: pricing.productionsTotal,
+          selectedProductions: pricing.selectedProductions,
+          couponApplied: pricing.appliedCouponCode,
+          discountAmount: pricing.discountAmount,
+          subtotal: pricing.subtotal,
+          chargedItems: pricing.chargedItems,
           contractAccepted: true,
           contractAcceptedAt: serverTimestamp(),
           createdAt: serverTimestamp(),

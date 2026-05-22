@@ -14,6 +14,19 @@ export interface PackageInfo {
   [key: string]: string | undefined;
 }
 
+export interface ProductionOption {
+  id: string;
+  name: string;
+  price: number;
+  description: string;
+  enabled: boolean;
+}
+
+export interface AdditionalInfo {
+  label: string;
+  value: string;
+}
+
 export interface Package {
   id: string; // slug
   title: string;
@@ -21,11 +34,18 @@ export interface Package {
   shortDesc: string;
   desc: string;
   options: PackageOption[];
-  info: PackageInfo;
+  
+  info?: PackageInfo;
+  additionalInfo?: AdditionalInfo[];
+  
+  productions?: ProductionOption[];
+  
   active: boolean;
   showInHome: boolean;
   showInPackages: boolean;
   order: number;
+  
+  // Legacy fields
   hasProduction?: boolean;
   productionPrice?: number;
   productionDesc?: string;

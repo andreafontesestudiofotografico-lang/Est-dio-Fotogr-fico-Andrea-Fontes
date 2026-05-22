@@ -75,7 +75,38 @@ function PackagesManager() {
 
   const handleSavePkg = async () => {
     if (!editingPkg) return;
-    await savePackage(editingPkg);
+
+    const pkgToSave = { ...editingPkg };
+
+    if (pkgToSave.additionalInfo) {
+       pkgToSave.additionalInfo = pkgToSave.additionalInfo.map(i => ({ label: i.label.trim(), value: i.value.trim() })).filter(info => info.label !== "" && info.value !== "");
+    }
+    
+    if (pkgToSave.options && pkgToSave.options.length > 0) {
+       if (pkgToSave.options[0].includes) {
+           pkgToSave.options[0].includes = pkgToSave.options[0].includes.map(s => s.trim()).filter(Boolean);
+       }
+       if (!pkgToSave.options[0].name) {
+           pkgToSave.options[0].name = "Padrão";
+       }
+    }
+
+    if (pkgToSave.productions) {
+       const ids = new Set();
+       const validProds = [];
+       for (const p of pkgToSave.productions) {
+         if (!p.id || !p.name) continue; // Skip incomplete items invisibly, or you could alert.
+         if (ids.has(p.id)) {
+           alert("Erro: existem duas produções com o mesmo ID (" + p.id + "). Corriga para salvar.");
+           return;
+         }
+         ids.add(p.id);
+         validProds.push(p);
+       }
+       pkgToSave.productions = validProds;
+    }
+
+    await savePackage(pkgToSave);
     setIsModalOpen(false);
     fetchPkgs();
   };
@@ -151,33 +182,198 @@ function PackagesManager() {
                        value={editingPkg.desc} onChange={e => setEditingPkg({...editingPkg, desc: e.target.value})} />
               </div>
               
-              <div className="border-t border-gray-200 py-4 my-2">
-                <label className="block text-xs font-bold uppercase mb-1">Valor do Pacote Padrão</label>
-                <input type="number" className="w-full border border-gray-300 p-2 text-sm" 
-                       value={editingPkg.options[0]?.price || 0} 
-                       onChange={e => {
-                         const newOpts = [...editingPkg.options];
-                         if (newOpts.length === 0) newOpts.push({ name: "Padrão", price: 0, includes: [] });
-                         newOpts[0].price = Number(e.target.value);
-                         setEditingPkg({...editingPkg, options: newOpts});
-                       }} />
+              <div className="border border-gray-200 p-4 mb-4">
+                <h3 className="font-bold text-xs uppercase mb-4 border-b border-gray-200 pb-2">Opção do Pacote (Checkouts)</h3>
+                
+                <div className="mb-4">
+                  <label className="block text-xs font-bold uppercase mb-1">Nome da Opção (ex: Padrão, Premium)</label>
+                  <input type="text" className="w-full border border-gray-300 p-2 text-sm" 
+                         value={editingPkg.options[0]?.name || "Padrão"} 
+                         onChange={e => {
+                           const newOpts = [...editingPkg.options];
+                           if (newOpts.length === 0) newOpts.push({ name: "Padrão", price: 0, includes: [] });
+                           newOpts[0].name = e.target.value;
+                           setEditingPkg({...editingPkg, options: newOpts});
+                         }} />
+                </div>
+                
+                <div className="mb-4">
+                  <label className="block text-xs font-bold uppercase mb-1">Valor Final</label>
+                  <input type="number" className="w-full border border-gray-300 p-2 text-sm" 
+                         value={editingPkg.options[0]?.price || 0} 
+                         onChange={e => {
+                           const newOpts = [...editingPkg.options];
+                           if (newOpts.length === 0) newOpts.push({ name: "Padrão", price: 0, includes: [] });
+                           newOpts[0].price = Number(e.target.value);
+                           setEditingPkg({...editingPkg, options: newOpts});
+                         }} />
+                </div>
+
+                <div>
+                  <div className="flex justify-between items-center mb-2">
+                    <label className="block text-xs font-bold uppercase">Benefícios do Pacote (Max: 4)</label>
+                    <button className="text-xs font-black uppercase tracking-widest text-blue-600 hover:text-blue-800"
+                            onClick={() => {
+                              const newOpts = [...editingPkg.options];
+                              if (newOpts.length === 0) newOpts.push({ name: "Padrão", price: 0, includes: [] });
+                              if (!newOpts[0].includes) newOpts[0].includes = [];
+                              if (newOpts[0].includes.length < 4) {
+                                newOpts[0].includes.push("");
+                                setEditingPkg({...editingPkg, options: newOpts});
+                              }
+                            }}>+ Adicionar</button>
+                  </div>
+                  {editingPkg.options[0]?.includes?.map((inc, idx) => (
+                    <div key={idx} className="flex gap-2 mb-2">
+                      <input type="text" className="w-full border border-gray-300 p-2 text-sm" 
+                             value={inc} 
+                             onChange={e => {
+                               const newOpts = [...editingPkg.options];
+                               newOpts[0].includes[idx] = e.target.value;
+                               setEditingPkg({...editingPkg, options: newOpts});
+                             }} />
+                      <button className="text-red-500 hover:bg-red-50 px-3 border border-red-100" onClick={() => {
+                        const newOpts = [...editingPkg.options];
+                        newOpts[0].includes.splice(idx, 1);
+                        setEditingPkg({...editingPkg, options: newOpts});
+                      }}><Trash2 className="w-4 h-4" /></button>
+                    </div>
+                  ))}
+                  <p className="text-xs text-gray-400">São exibidos com ícone de check na página do pacote.</p>
+                </div>
               </div>
 
+
+              <div className="border border-gray-200 p-4 mb-4">
+                <div className="flex justify-between items-center mb-4 border-b border-gray-200 pb-2">
+                  <h3 className="font-bold text-xs uppercase">Informações Adicionais</h3>
+                  <button className="text-xs font-black uppercase tracking-widest text-blue-600 hover:text-blue-800"
+                          onClick={() => {
+                            const newInfo = [...(editingPkg.additionalInfo || [])];
+                            newInfo.push({ label: "", value: "" });
+                            setEditingPkg({...editingPkg, additionalInfo: newInfo});
+                          }}>+ Adicionar</button>
+                </div>
+                {editingPkg.additionalInfo?.map((info, idx) => (
+                  <div key={idx} className="flex gap-2 mb-2">
+                    <input type="text" className="w-1/3 border border-gray-300 p-2 text-sm" placeholder="Título (ex: Prazo)"
+                           value={info.label} onChange={e => {
+                             const newInfo = [...(editingPkg.additionalInfo || [])];
+                             newInfo[idx].label = e.target.value;
+                             setEditingPkg({...editingPkg, additionalInfo: newInfo});
+                           }} />
+                    <input type="text" className="flex-1 border border-gray-300 p-2 text-sm" placeholder="Descrição (ex: 15 dias)"
+                           value={info.value} onChange={e => {
+                             const newInfo = [...(editingPkg.additionalInfo || [])];
+                             newInfo[idx].value = e.target.value;
+                             setEditingPkg({...editingPkg, additionalInfo: newInfo});
+                           }} />
+                    <button className="text-red-500 hover:bg-red-50 px-3 border border-red-100" onClick={() => {
+                        const newInfo = [...(editingPkg.additionalInfo || [])];
+                        newInfo.splice(idx, 1);
+                        setEditingPkg({...editingPkg, additionalInfo: newInfo});
+                    }}><Trash2 className="w-4 h-4" /></button>
+                  </div>
+                ))}
+              </div>
+
+
+              <div className="border border-gray-200 p-4 mb-4 bg-gray-50">
+                <div className="flex justify-between items-center mb-4 border-b border-gray-200 pb-2">
+                  <h3 className="font-bold text-xs uppercase">Produções Opcionais</h3>
+                  <button className="text-xs font-black uppercase tracking-widest text-blue-600 hover:text-blue-800"
+                          onClick={() => {
+                            const newProds = [...(editingPkg.productions || [])];
+                            const tempId = "prod-" + Date.now();
+                            newProds.push({ id: tempId, name: "", price: 0, description: "", enabled: true });
+                            setEditingPkg({...editingPkg, productions: newProds});
+                          }}>+ Adicionar</button>
+                </div>
+                {editingPkg.productions?.map((prod, idx) => (
+                  <div key={idx} className="border border-gray-200 p-4 mb-4 bg-white relative">
+                    <button className="absolute top-4 right-4 text-red-500 hover:bg-red-50 p-2 border border-red-100" onClick={() => {
+                        const newProds = [...(editingPkg.productions || [])];
+                        newProds.splice(idx, 1);
+                        setEditingPkg({...editingPkg, productions: newProds});
+                    }}><Trash2 className="w-4 h-4" /></button>
+                    
+                    <div className="flex items-center gap-2 mb-4">
+                      <input type="checkbox" checked={prod.enabled} 
+                             onChange={e => {
+                               const newProds = [...(editingPkg.productions || [])];
+                               newProds[idx].enabled = e.target.checked;
+                               setEditingPkg({...editingPkg, productions: newProds});
+                             }} />
+                      <label className="text-sm font-bold uppercase">Ativo</label>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4 mb-2">
+                      <div>
+                        <label className="block text-xs font-bold uppercase mb-1">Nome</label>
+                        <input type="text" className="w-full border border-gray-300 p-2 text-sm" 
+                               value={prod.name} onChange={e => {
+                                 const newProds = [...(editingPkg.productions || [])];
+                                 newProds[idx].name = e.target.value;
+                                 if (!newProds[idx].id || newProds[idx].id.startsWith('prod-')) {
+                                   newProds[idx].id = e.target.value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
+                                 }
+                                 setEditingPkg({...editingPkg, productions: newProds});
+                               }} />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold uppercase mb-1">ID (Gerado automaticamente)</label>
+                        <input type="text" className="w-full border border-gray-300 p-2 text-sm bg-gray-50 font-mono" 
+                               value={prod.id} onChange={e => {
+                                 const newProds = [...(editingPkg.productions || [])];
+                                 newProds[idx].id = e.target.value;
+                                 setEditingPkg({...editingPkg, productions: newProds});
+                               }} />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-bold uppercase mb-1">Valor (R$)</label>
+                        <input type="number" className="w-full border border-gray-300 p-2 text-sm" 
+                               value={prod.price} onChange={e => {
+                                 const newProds = [...(editingPkg.productions || [])];
+                                 newProds[idx].price = Number(e.target.value);
+                                 setEditingPkg({...editingPkg, productions: newProds});
+                               }} />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold uppercase mb-1">Descrição</label>
+                        <input type="text" className="w-full border border-gray-300 p-2 text-sm" 
+                               value={prod.description} onChange={e => {
+                                 const newProds = [...(editingPkg.productions || [])];
+                                 newProds[idx].description = e.target.value;
+                                 setEditingPkg({...editingPkg, productions: newProds});
+                               }} />
+                      </div>
+                    </div>
+
+                  </div>
+                ))}
+              </div>
+
+
+              {/* LEGACY PRODUCTION FOR BACKWARD COMPATIBILITY */}
               <div className="border border-gray-200 p-4 bg-gray-50 flex items-start gap-4">
                 <input type="checkbox" className="mt-1" checked={editingPkg.hasProduction} 
                        onChange={e => setEditingPkg({...editingPkg, hasProduction: e.target.checked})} />
                 <div className="flex-1">
-                  <label className="block text-xs font-bold uppercase mb-2">Habilitar Produção Opcional</label>
+                  <label className="block text-xs font-bold uppercase mb-2">Habilitar Produção Opcional (Legado)</label>
+                  <p className="text-xs text-gray-500 mb-2">Use a seção "Produções Opcionais Novas" acima para criar múltiplas produções. Esta seção é apenas para compatibilidade.</p>
                   {editingPkg.hasProduction && (
                     <div className="grid grid-cols-2 gap-4 mt-2">
                       <div>
-                        <label className="block text-xs font-bold uppercase text-gray-500 mb-1">Valor da Produção</label>
-                        <input type="number" className="w-full border border-gray-300 p-2 text-sm" 
+                        <label className="block text-xs font-bold uppercase text-gray-400 mb-1">Valor da Produção</label>
+                        <input type="number" className="w-full border border-gray-300 p-2 text-sm text-gray-500" 
                                value={editingPkg.productionPrice || 0} onChange={e => setEditingPkg({...editingPkg, productionPrice: Number(e.target.value)})} />
                       </div>
                       <div>
-                        <label className="block text-xs font-bold uppercase text-gray-500 mb-1">Descrição da Produção</label>
-                        <input type="text" className="w-full border border-gray-300 p-2 text-sm" placeholder="Ex: Cabelo e maquiagem"
+                        <label className="block text-xs font-bold uppercase text-gray-400 mb-1">Descrição</label>
+                        <input type="text" className="w-full border border-gray-300 p-2 text-sm text-gray-500"
                                value={editingPkg.productionDesc || ""} onChange={e => setEditingPkg({...editingPkg, productionDesc: e.target.value})} />
                       </div>
                     </div>
@@ -283,15 +479,57 @@ function SiteSettingsManager() {
 
 function CouponsManager() {
   const [coupons, setCoupons] = useState<Coupon[]>([]);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingCoupon, setEditingCoupon] = useState<Partial<Coupon> | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+
   useEffect(() => {
-    getCoupons().then(setCoupons);
+    fetchCoupons();
   }, []);
+
+  const fetchCoupons = () => getCoupons().then(setCoupons);
+
+  const handleSave = async () => {
+    if (!editingCoupon || !editingCoupon.code || !editingCoupon.value) return;
+    setIsLoading(true);
+    try {
+      const couponToSave: Coupon = {
+        id: editingCoupon.id || Date.now().toString(),
+        code: editingCoupon.code.trim().toUpperCase(),
+        type: editingCoupon.type || 'percentage',
+        value: Number(editingCoupon.value),
+        active: editingCoupon.active !== false,
+        currentUses: editingCoupon.currentUses || 0,
+        usageLimit: editingCoupon.usageLimit ? Number(editingCoupon.usageLimit) : undefined,
+      };
+      
+      await saveCoupon(couponToSave);
+      setIsModalOpen(false);
+      await fetchCoupons();
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const openModal = (coupon?: Coupon) => {
+    if (coupon) {
+      setEditingCoupon(coupon);
+    } else {
+      setEditingCoupon({
+        code: "",
+        type: "percentage",
+        value: 0,
+        active: true,
+      });
+    }
+    setIsModalOpen(true);
+  };
 
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-xl font-black uppercase">Gerenciar Cupons</h2>
-        <button className="bg-black text-white px-4 py-2 text-xs font-black uppercase tracking-widest flex items-center gap-2 hover:bg-gray-800">
+        <button onClick={() => openModal()} className="bg-black text-white px-4 py-2 text-xs font-black uppercase tracking-widest flex items-center gap-2 hover:bg-gray-800">
           <Plus className="w-4 h-4" /> Novo Cupom
         </button>
       </div>
@@ -303,7 +541,7 @@ function CouponsManager() {
               <th className="p-4">Desconto</th>
               <th className="p-4">Usos</th>
               <th className="p-4">Status</th>
-              <th className="p-4">Ações</th>
+              <th className="p-4 text-right">Ações</th>
             </tr>
           </thead>
           <tbody>
@@ -312,9 +550,14 @@ function CouponsManager() {
                 <td className="p-4 font-bold">{c.code}</td>
                 <td className="p-4">{c.type === 'percentage' ? `${c.value}%` : `R$ ${c.value}`}</td>
                 <td className="p-4">{c.currentUses} / {c.usageLimit || '∞'}</td>
-                <td className="p-4">{c.active ? 'Ativo' : 'Inativo'}</td>
                 <td className="p-4">
-                   <button className="text-red-500 font-bold uppercase text-xs" onClick={() => deleteCoupon(c.id).then(()=>getCoupons().then(setCoupons))}>Excluir</button>
+                  <span className={`px-2 py-1 text-[10px] font-black uppercase tracking-widest ${c.active ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                    {c.active ? 'Ativo' : 'Inativo'}
+                  </span>
+                </td>
+                <td className="p-4 text-right flex justify-end gap-4">
+                   <button className="text-blue-500 font-bold uppercase text-xs hover:underline" onClick={() => openModal(c)}>Editar</button>
+                   <button className="text-red-500 font-bold uppercase text-xs hover:underline" onClick={() => deleteCoupon(c.id).then(fetchCoupons)}>Excluir</button>
                 </td>
               </tr>
             ))}
@@ -324,6 +567,65 @@ function CouponsManager() {
           </tbody>
         </table>
       </div>
+
+      {isModalOpen && editingCoupon && (
+        <div 
+          className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4"
+          onClick={(e) => {
+            if (e.target === e.currentTarget && !isLoading) setIsModalOpen(false);
+          }}
+        >
+          <div className="bg-white max-w-md w-full p-8 max-h-[90vh] overflow-y-auto">
+            <h3 className="text-lg font-black uppercase mb-6">{editingCoupon.id ? 'Editar Cupom' : 'Novo Cupom'}</h3>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold uppercase mb-1">Código</label>
+                <input type="text" className="w-full border border-gray-300 p-2 text-sm uppercase" 
+                       value={editingCoupon.code} onChange={e => setEditingCoupon({...editingCoupon, code: e.target.value})} 
+                       placeholder="Ex: VERAO20" disabled={isLoading} />
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold uppercase mb-1">Tipo de Desconto</label>
+                  <select className="w-full border border-gray-300 p-2 text-sm"
+                          value={editingCoupon.type} onChange={e => setEditingCoupon({...editingCoupon, type: e.target.value as any})} disabled={isLoading}>
+                    <option value="percentage">Porcentagem (%)</option>
+                    <option value="fixed">Valor Fixo (R$)</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold uppercase mb-1">Valor</label>
+                  <input type="number" className="w-full border border-gray-300 p-2 text-sm" 
+                         value={editingCoupon.value} onChange={e => setEditingCoupon({...editingCoupon, value: Number(e.target.value)})} disabled={isLoading} />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold uppercase mb-1">Limite de Usos (Opcional)</label>
+                <input type="number" className="w-full border border-gray-300 p-2 text-sm" placeholder="Deixe em branco para ilimitado"
+                       value={editingCoupon.usageLimit || ''} onChange={e => setEditingCoupon({...editingCoupon, usageLimit: e.target.value ? Number(e.target.value) : undefined})} disabled={isLoading} />
+              </div>
+              
+              <div className="flex items-center gap-2 mt-4 pt-4 border-t border-gray-100">
+                <input type="checkbox" checked={editingCoupon.active} 
+                       onChange={e => setEditingCoupon({...editingCoupon, active: e.target.checked})} disabled={isLoading} />
+                <label className="text-sm font-bold uppercase">Cupom Ativo</label>
+              </div>
+            </div>
+
+            <div className="mt-8 flex justify-end gap-4">
+              <button className="px-4 py-2 text-xs font-black uppercase text-gray-400 hover:text-black"
+                      onClick={() => setIsModalOpen(false)} disabled={isLoading}>Cancelar</button>
+              <button className="bg-black text-white px-6 py-2 text-xs font-black uppercase tracking-widest hover:bg-gray-800 disabled:opacity-50"
+                      onClick={handleSave} disabled={isLoading}>
+                {isLoading ? 'Salvando...' : 'Salvar Cupom'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

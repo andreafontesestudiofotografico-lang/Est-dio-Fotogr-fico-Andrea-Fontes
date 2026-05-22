@@ -84,12 +84,21 @@ export default function PackageDetails() {
 
           <h2 className="text-sm font-black uppercase tracking-widest text-gray-400 mb-8">Informações Adicionais</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 mb-16 border-t border-gray-100 pt-8">
-            {Object.entries(pkg.info || {}).map(([key, value]) => (
-              <div key={key}>
-                <h4 className="text-xs font-black uppercase tracking-widest mb-1 text-black">{key.replace('_', ' ')}</h4>
-                <p className="text-sm font-medium text-gray-500">{value as string}</p>
-              </div>
-            ))}
+            {pkg.additionalInfo && pkg.additionalInfo.length > 0 ? (
+              pkg.additionalInfo.map((info, idx) => (
+                <div key={idx}>
+                  <h4 className="text-xs font-black uppercase tracking-widest mb-1 text-black">{info.label}</h4>
+                  <p className="text-sm font-medium text-gray-500">{info.value}</p>
+                </div>
+              ))
+            ) : (
+              Object.entries(pkg.info || {}).map(([key, value]) => (
+                <div key={key}>
+                  <h4 className="text-xs font-black uppercase tracking-widest mb-1 text-black">{key.replace('_', ' ')}</h4>
+                  <p className="text-sm font-medium text-gray-500">{value as string}</p>
+                </div>
+              ))
+            )}
           </div>
 
           <h2 className="text-sm font-black uppercase tracking-widest text-gray-400 mb-8">Como funciona</h2>

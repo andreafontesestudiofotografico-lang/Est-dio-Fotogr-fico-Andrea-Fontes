@@ -32,7 +32,7 @@ export async function getPackage(id: string): Promise<Package | null> {
 export async function savePackage(pkg: Package): Promise<void> {
   try {
     const { id, ...data } = pkg;
-    await setDoc(doc(db, "cms_packages", id), data);
+    await setDoc(doc(db, "cms_packages", id), data, { merge: true });
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, `cms_packages/${pkg.id}`);
   }

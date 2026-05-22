@@ -3,6 +3,7 @@ import { ArrowLeft, CreditCard, Check } from "lucide-react";
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../../services/AuthContext";
 import { getPackage, getCouponByCode } from "../../services/cms";
+import { calculatePricing } from "../../services/pricing";
 import { Package, Coupon } from "../../types";
 import { photographyExperiences } from "./Packages";
 
@@ -25,8 +26,7 @@ export default function Cart() {
   const [loading, setLoading] = useState(true);
   const [pkg, setPkg] = useState<Package | null>(null);
   
-  // Produção Opcional
-  const [wantProduction, setWantProduction] = useState(false);
+  const [selectedProductionIds, setSelectedProductionIds] = useState<string[]>([]);
 
   // Cupom
   const [couponCode, setCouponCode] = useState("");
@@ -62,7 +62,11 @@ export default function Cart() {
       try {
         const parsed = JSON.parse(saved);
         setFormData(prev => ({ ...prev, ...parsed, nome: user?.displayName || parsed.nome, email: user?.email || parsed.email }));
-        if (parsed.wantProduction) setWantProduction(parsed.wantProduction);
+        if (parsed.selectedProductionIds) {
+          setSelectedProductionIds(parsed.selectedProductionIds);
+        } else if (parsed.wantProduction) {
+          setSelectedProductionIds(['legacy']);
+        }
         if (parsed.appliedCoupon) setAppliedCoupon(parsed.appliedCoupon);
       } catch (e) {
         console.error("Failed to parse cartData", e);
@@ -73,6 +77,9 @@ export default function Cart() {
 
   const opcaoIndex = opcaoIndexStr ? parseInt(opcaoIndexStr) : 0;
   const opcao = pkg?.options[opcaoIndex];
+  
+  const pricingParam = selectedProductionIds.join(",");
+  const pricing = calculatePricing(pkg, opcaoIndex, pricingParam, appliedCoupon);
 
   const handleApplyCoupon = async () => {
     setCouponError("");
@@ -101,21 +108,19 @@ export default function Cart() {
     e.preventDefault();
     if (!pkg || !opcao) return;
     
-    // Save state for persistence across login
-    sessionStorage.setItem("cartData", JSON.stringify({ ...formData, wantProduction, appliedCoupon }));
+    sessionStorage.setItem("cartData", JSON.stringify({ ...formData, selectedProductionIds, appliedCoupon }));
 
     if (!user) {
       navigate('/login', { state: { from: location } });
       return;
     }
     
-    setLoading(true);
+    let prodParamStr = pricing.selectedProductions.join(',');
+    if (!prodParamStr) prodParamStr = '0'; // For empty
     
-    // Convert coupon obj to a string param or a simplified param
-    const prodParam = wantProduction ? '1' : '0';
-    const couponParam = appliedCoupon ? encodeURIComponent(appliedCoupon.code) : '';
+    const couponParam = pricing.appliedCouponCode ? encodeURIComponent(pricing.appliedCouponCode) : '';
     
-    navigate(`/agendamento?pacote=${pkg.id}&opcao=${opcaoIndex}&nome=${encodeURIComponent(formData.nome)}&email=${encodeURIComponent(formData.email)}&prod=${prodParam}&cupom=${couponParam}`);
+    navigate(`/agendamento?pacote=${pkg.id}&opcao=${opcaoIndex}&nome=${encodeURIComponent(formData.nome)}&email=${encodeURIComponent(formData.email)}&prod=${prodParamStr}&cupom=${couponParam}`);
   };
 
   if (loading) {
@@ -134,21 +139,6 @@ export default function Cart() {
       </div>
     );
   }
-
-  let subtotal = opcao.price;
-  let productionTotal = wantProduction && pkg.productionPrice ? pkg.productionPrice : 0;
-  let totalBeforeDiscount = subtotal + productionTotal;
-  let discountAmount = 0;
-  
-  if (appliedCoupon) {
-    if (appliedCoupon.type === 'percentage') {
-      discountAmount = totalBeforeDiscount * (appliedCoupon.value / 100);
-    } else {
-      discountAmount = appliedCoupon.value;
-    }
-  }
-  
-  let finalTotal = Math.max(0, totalBeforeDiscount - discountAmount);
 
   return (
     <div className="bg-white min-h-screen pt-24 pb-24 px-4 sm:px-8 font-sans text-black animate-in fade-in duration-500">
@@ -209,10 +199,35 @@ export default function Cart() {
                 </div>
               </div>
 
-              {pkg.hasProduction && pkg.productionPrice && (
-                <div className="mt-8 border border-gray-200 p-6 bg-gray-50 flex items-start gap-4 cursor-pointer" onClick={() => setWantProduction(!wantProduction)}>
-                  <div className={`w-6 h-6 border ${wantProduction ? 'bg-black border-black' : 'bg-white border-gray-300'} flex items-center justify-center`}>
-                    {wantProduction && <Check className="w-4 h-4 text-white" />}
+              {pkg.productions?.filter(p => p.enabled).map(prod => (
+                <div key={prod.id} className="mt-4 border border-gray-200 p-6 bg-gray-50 flex items-start gap-4 cursor-pointer" onClick={() => {
+                  if (selectedProductionIds.includes(prod.id)) {
+                     setSelectedProductionIds(selectedProductionIds.filter(id => id !== prod.id));
+                  } else {
+                     setSelectedProductionIds([...selectedProductionIds, prod.id]);
+                  }
+                }}>
+                  <div className={`w-6 h-6 border ${selectedProductionIds.includes(prod.id) ? 'bg-black border-black' : 'bg-white border-gray-300'} flex items-center justify-center`}>
+                    {selectedProductionIds.includes(prod.id) && <Check className="w-4 h-4 text-white" />}
+                  </div>
+                  <div>
+                    <h3 className="uppercase font-black text-sm mb-1 tracking-widest">{prod.name}</h3>
+                    <p className="text-gray-500 text-sm font-medium">{prod.description}</p>
+                    <p className="mt-2 text-xs font-black uppercase tracking-widest text-black">+ R$ {Number(prod.price).toFixed(2).replace('.', ',')}</p>
+                  </div>
+                </div>
+              ))}
+
+              {(!pkg.productions || pkg.productions.length === 0) && pkg.hasProduction && pkg.productionPrice && (
+                <div className="mt-8 border border-gray-200 p-6 bg-gray-50 flex items-start gap-4 cursor-pointer" onClick={() => {
+                  if (selectedProductionIds.includes('legacy')) {
+                     setSelectedProductionIds(selectedProductionIds.filter(id => id !== 'legacy'));
+                  } else {
+                     setSelectedProductionIds([...selectedProductionIds, 'legacy']);
+                  }
+                }}>
+                  <div className={`w-6 h-6 border ${selectedProductionIds.includes('legacy') ? 'bg-black border-black' : 'bg-white border-gray-300'} flex items-center justify-center`}>
+                    {selectedProductionIds.includes('legacy') && <Check className="w-4 h-4 text-white" />}
                   </div>
                   <div>
                     <h3 className="uppercase font-black text-sm mb-1 tracking-widest">Desejo Produção Profissional</h3>
@@ -240,29 +255,26 @@ export default function Cart() {
               </div>
 
               <div className="space-y-4 mb-6 pb-6 border-b border-gray-200 text-sm font-medium">
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Pacote Módulo Base</span>
-                  <span>R$ {subtotal.toFixed(2).replace('.', ',')}</span>
-                </div>
-                {wantProduction && pkg.productionPrice && (
-                  <div className="flex justify-between text-black">
-                    <span className="text-gray-500">Produção Opcional</span>
-                    <span>+ R$ {pkg.productionPrice.toFixed(2).replace('.', ',')}</span>
+                {pricing.chargedItems.map((item, idx) => (
+                  <div key={idx} className="flex justify-between">
+                    <span className="text-gray-500">{item.name}</span>
+                    <span className={idx > 0 ? "text-black" : ""}>{item.price === 0 ? "R$ 0,00" : (idx > 0 ? "+ " : "") + `R$ ${item.price.toFixed(2).replace('.', ',')}`}</span>
                   </div>
-                )}
-                {appliedCoupon && (
-                  <div className="flex justify-between text-green-600">
+                ))}
+                
+                {pricing.appliedCouponCode && (
+                  <div className="flex justify-between text-green-600 border-t border-gray-100 pt-4 mt-2">
                     <span className="font-bold flex items-center gap-2">
-                      Cupom: {appliedCoupon.code}
+                      Cupom: {pricing.appliedCouponCode}
                       <button onClick={removeCoupon} className="text-xs text-red-500 uppercase tracking-widest hover:underline ml-2">Remover</button>
                     </span>
-                    <span>- R$ {discountAmount.toFixed(2).replace('.', ',')}</span>
+                    <span>- R$ {pricing.discountAmount.toFixed(2).replace('.', ',')}</span>
                   </div>
                 )}
               </div>
 
               {/* Cupom Form */}
-              {!appliedCoupon && (
+              {!pricing.appliedCouponCode && (
                 <div className="mb-6 pb-6 border-b border-gray-200">
                   <label className="block text-xs font-black uppercase tracking-widest text-gray-500 mb-2">Cupom de Desconto</label>
                   <div className="flex gap-2">
@@ -286,7 +298,7 @@ export default function Cart() {
 
               <div className="flex justify-between mb-8 items-end">
                 <span className="font-black uppercase tracking-widest text-sm">Total</span>
-                <span className="font-black text-3xl tracking-tighter">R$ {finalTotal.toFixed(2).replace('.', ',')}</span>
+                <span className="font-black text-3xl tracking-tighter">R$ {pricing.total.toFixed(2).replace('.', ',')}</span>
               </div>
 
               <button 

@@ -104,7 +104,7 @@ service cloud.firestore {
     }
 
     function isValidBooking(data) {
-      return data.size() >= 7 && data.size() <= 18
+      return data.size() >= 7 && data.size() <= 25
         && data.keys().hasAll(['clientId', 'packageId', 'status', 'totalPrice', 'createdAt', 'updatedAt'])
         && data.clientId is string && data.clientId.size() <= 128
         && data.packageId is string && data.packageId.size() <= 128
@@ -120,12 +120,19 @@ service cloud.firestore {
         && (data.get('optionName', '') is string && data.get('optionName', '').size() <= 100)
         && (data.get('contractAccepted', false) is bool)
         && (data.get('contractAcceptedAt', request.time) is timestamp)
+        && (data.get('productionSelected', false) is bool)
+        && (data.get('productionPrice', 0) is number)
+        && (data.get('selectedProductions', []) is list && data.get('selectedProductions', []).size() <= 10)
+        && (data.get('couponApplied', '') == null || data.get('couponApplied', '') is string)
+        && (data.get('discountAmount', 0) is number)
+        && (data.get('subtotal', 0) is number)
+        && (data.get('chargedItems', []) is list && data.get('chargedItems', []).size() <= 20)
         && data.createdAt is timestamp
         && data.updatedAt is timestamp;
     }
 
     function isValidBookingUpdate(data) {
-      return data.size() >= 7 && data.size() <= 18
+      return data.size() >= 7 && data.size() <= 25
         && data.keys().hasAll(['clientId', 'packageId', 'status', 'totalPrice', 'createdAt', 'updatedAt'])
         && data.clientId is string && data.clientId.size() <= 128
         && data.packageId is string && data.packageId.size() <= 128
@@ -142,6 +149,13 @@ service cloud.firestore {
         && (data.get('optionName', '') is string && data.get('optionName', '').size() <= 100)
         && (data.get('contractAccepted', false) is bool)
         && (data.get('contractAcceptedAt', request.time) is timestamp)
+        && (data.get('productionSelected', false) is bool)
+        && (data.get('productionPrice', 0) is number)
+        && (data.get('selectedProductions', []) is list && data.get('selectedProductions', []).size() <= 10)
+        && (data.get('couponApplied', '') == null || data.get('couponApplied', '') is string)
+        && (data.get('discountAmount', 0) is number)
+        && (data.get('subtotal', 0) is number)
+        && (data.get('chargedItems', []) is list && data.get('chargedItems', []).size() <= 20)
         && data.updatedAt is timestamp;
     }
 
