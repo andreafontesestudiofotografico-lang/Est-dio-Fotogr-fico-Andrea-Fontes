@@ -15,8 +15,8 @@ export const DocumentDownloader = ({ booking }: { booking: any }) => {
     try {
       let contentToPdf = booking.contractSnapshot.content;
       if (booking.cpf) {
-         // Replace the raw CPF with masked CPF dynamically for the PDF
-         contentToPdf = contentToPdf.replace(booking.cpf, maskCpfPartially(booking.cpf));
+         // Replace all raw CPFs with masked CPFs dynamically for the PDF
+         contentToPdf = contentToPdf.replaceAll(booking.cpf, maskCpfPartially(booking.cpf));
       }
 
       const blob = await pdf(<ContractPDF content={contentToPdf} />).toBlob();

@@ -1,16 +1,8 @@
-import { Document, Page, Text, View, StyleSheet, Font } from '@react-pdf/renderer';
+import { Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer';
 import { maskCpfPartially } from '../../utils/mask';
 
-Font.register({
-  family: 'Inter',
-  fonts: [
-    { src: 'https://fonts.gstatic.com/s/inter/v12/UcCO3FwrK3iLTeHuS_fvQtMwCp50KnMw2boKoduKmMEVuLyfMZhrib2Bg-4.ttf', fontWeight: 'normal' },
-    { src: 'https://fonts.gstatic.com/s/inter/v12/UcCO3FwrK3iLTeHuS_fvQtMwCp50KnMw2boKoduKmMEVuGsmZhrib2Bg-4.ttf', fontWeight: 'bold' }
-  ]
-});
-
 const styles = StyleSheet.create({
-  page: { padding: 40, fontFamily: 'Inter', color: '#000' },
+  page: { padding: 40, fontFamily: 'Helvetica', color: '#000' },
   header: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 40, borderBottom: '2 solid #000', paddingBottom: 20 },
   headerLeft: { flex: 1 },
   headerRight: { alignItems: 'flex-end' },

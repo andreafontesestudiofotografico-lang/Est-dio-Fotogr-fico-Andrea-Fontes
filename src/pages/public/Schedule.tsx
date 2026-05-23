@@ -126,6 +126,11 @@ export default function Schedule() {
 
   const finalTotal = pricing.total;
 
+  const cartDataRaw = sessionStorage.getItem("cartData");
+  const cartData = cartDataRaw ? JSON.parse(cartDataRaw) : {};
+  const clientName = cartData.nome || user?.displayName || "[Seu Nome]";
+  const clientCpf = cartData.cpf || "[Seu CPF]";
+
   const handleConfirm = async () => {
     if (date && time && user) {
       setLoading(true);
@@ -277,8 +282,8 @@ export default function Schedule() {
                <div className="h-40 overflow-y-auto bg-white border border-gray-200 p-4 mb-6 text-sm text-gray-600 space-y-4 whitespace-pre-wrap font-mono">
                  {siteSettings?.contractTemplate ? (
                     siteSettings.contractTemplate.content
-                      .replace(/\{CLIENT_NAME\}/g, "[Seu Nome]")
-                      .replace(/\{CLIENT_CPF\}/g, "[Seu CPF]")
+                      .replace(/\{CLIENT_NAME\}/g, clientName)
+                      .replace(/\{CLIENT_CPF\}/g, clientCpf)
                       .replace(/\{PACKAGE_NAME\}/g, pkg.title)
                       .replace(/\{PACKAGE_OPTION\}/g, opcao.name)
                       .replace(/\{DATE\}/g, `${date ? format(date, "dd/MM/yyyy") : '[Data]'} ${time || '[Horário]'}`)
