@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, lazy, Suspense } from "react";
 import { Users, Calendar, DollarSign, Image as ImageIcon, Settings, LogOut, Search, Plus, Filter, MessageCircle, FileText, Check, X } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { auth, db } from "../../services/firebase";
@@ -7,9 +7,12 @@ import { collection, query, onSnapshot, orderBy, doc, updateDoc, serverTimestamp
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
-import { GalleryManager } from "../../components/admin/GalleryManager";
+import { ErrorBoundary } from "../../components/common/ErrorBoundary";
+import { FEATURES } from "../../config/features";
 import { CMSManager } from "../../components/admin/CMSManager";
 import { ReceiptManagerModal } from "../../components/admin/ReceiptManagerModal";
+
+const GalleryManager = lazy(() => import("../../components/admin/GalleryManager").then(m => ({ default: m.GalleryManager })));
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState("overview");
@@ -86,7 +89,7 @@ export default function AdminDashboard() {
   const menuItems = [
     { id: "overview", label: "Dashboard", icon: Calendar },
     { id: "crm", label: "Clientes & CRM", icon: Users },
-    { id: "galleries", label: "Galerias", icon: ImageIcon },
+    ...(FEATURES.enableGalleryV2 ? [{ id: "galleries", label: "Galerias", icon: ImageIcon }] : []),
     { id: "finances", label: "Financeiro", icon: DollarSign },
     { id: "settings", label: "Configurações", icon: Settings },
   ];
@@ -313,14 +316,24 @@ export default function AdminDashboard() {
           </>
         )}
         
-        {activeTab === "galleries" && (
+        {activeTab === "galleries" && FEATURES.enableGalleryV2 && (
           <>
             {selectedGallery ? (
-               <GalleryManager 
-                  booking={bookings.find(b => b.id === selectedGallery)} 
-                  client={clients[bookings.find(b => b.id === selectedGallery)?.clientId]} 
-                  onBack={() => setSelectedGallery(null)} 
-               />
+               <ErrorBoundary componentName="GalleryManager" fallback={
+                 <div className="p-8">
+                    <h2 className="text-xl font-bold text-red-600 mb-4">Erro na Galeria V2</h2>
+                    <p className="mb-4">Houve uma falha ao renderizar a galeria. A equipe já foi notificada. Seu sistema e CRM continuam funcionando normalmente.</p>
+                    <button onClick={() => setSelectedGallery(null)} className="px-4 py-2 bg-black text-white hover:bg-gray-800 transition-colors">Voltar</button>
+                 </div>
+               }>
+                 <Suspense fallback={<div className="p-8">Carregando Galeria V2...</div>}>
+                   <GalleryManager 
+                      booking={bookings.find(b => b.id === selectedGallery)} 
+                      client={clients[bookings.find(b => b.id === selectedGallery)?.clientId]} 
+                      onBack={() => setSelectedGallery(null)} 
+                   />
+                 </Suspense>
+               </ErrorBoundary>
             ) : (
                <>
                   <div className="flex justify-between items-center mb-8">

@@ -8,8 +8,15 @@ service firebase.storage {
       return request.auth != null;
     }
     
-    function isAdmin(firestore) {
-      return isSignedIn() && firestore.exists(/databases/(default)/documents/admins/$(request.auth.uid));
+    function isAdmin() {
+      return isSignedIn() && (
+        firestore.exists(/databases/(default)/documents/admins/$(request.auth.uid)) ||
+        request.auth.token.email == "andreafontesestudiofotografico@gmail.com"
+      );
+    }
+
+    function isGalleryOwner(bookingId) {
+      return isSignedIn() && firestore.get(/databases/(default)/documents/bookings/$(bookingId)).data.clientId == request.auth.uid;
     }
     
     // Public assets (if any)
@@ -18,15 +25,39 @@ service firebase.storage {
       allow write: if false; // Only manageable from console
     }
 
-    // Galleries (Images for clients)
+    // Default Galleries fallback (old structure root files)
     match /galleries/{bookingId}/{fileName} {
-      // Admin can upload, delete, and read anything
-      allow write: if isAdmin(firestore);
+      allow write: if isAdmin();
+      allow read: if isAdmin() || isGalleryOwner(bookingId);
+      // No list permissions mapped 
+    }
+
+    // New gallery structure
+    match /galleries/{bookingId} {
       
-      // Clients can read images from their own galleries.
-      // Easiest secure way without passing clientId in custom tokens is verifying the gallery document
-      // Note: storage rules firestore access is limited: firestore.get(/databases/(default)/documents/...)
-      allow read: if isAdmin(firestore) || (isSignedIn() && firestore.get(/databases/(default)/documents/galleries/$(bookingId)).data.clientId == request.auth.uid);
+      // thumb - Light grid preview
+      match /thumb/{fileName} {
+        allow read: if isAdmin() || isGalleryOwner(bookingId);
+        allow write, delete: if isAdmin();
+      }
+
+      // preview - Light copy with watermark
+      match /preview/{fileName} {
+        allow read: if isAdmin() || isGalleryOwner(bookingId);
+        allow write, delete: if isAdmin();
+      }
+
+      // original - Never accessed directly by the client
+      match /original/{fileName} {
+        allow read, write, delete: if isAdmin();
+      }
+
+      // final - Edited photos
+      match /final/{fileName} {
+        // Future: could allow read for client if releasedAt exists, but for now just basic read
+        allow read: if isAdmin() || isGalleryOwner(bookingId);
+        allow write, delete: if isAdmin();
+      }
     }
   }
 }

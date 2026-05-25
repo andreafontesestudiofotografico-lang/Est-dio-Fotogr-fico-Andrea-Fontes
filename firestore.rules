@@ -8,7 +8,16 @@ service cloud.firestore {
     function incoming() { return request.resource.data; }
     function existing() { return resource.data; }
     function isSignedIn() { return request.auth != null; }
-    function isAdmin() { return isSignedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid)); }
+    function isAdmin() { 
+      return isSignedIn() && (
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid)) ||
+        request.auth.token.email == "andreafontesestudiofotografico@gmail.com"
+      ); 
+    }
+    function isGalleryOwner(bookingId) {
+      let bookingData = get(/databases/$(database)/documents/bookings/$(bookingId)).data;
+      return isSignedIn() && bookingData != null && bookingData.clientId == request.auth.uid;
+    }
     function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
 
     // Admins
@@ -217,6 +226,11 @@ service cloud.firestore {
         && data.updatedAt == request.time;
     }
 
+    function isGalleryV2(data) {
+      return data.keys().hasAll(['status', 'maxSelections', 'extraPhotoPrice', 'allowExtraSelections', 'createdAt'])
+        && data.status in ['UPLOADING', 'READY', 'SELECTING', 'LOCKED', 'PROCESSING', 'DELIVERED'];
+    }
+
     function isValidGalleryUpdate(data) {
       return data.size() >= 6 && data.size() <= 7
         && data.keys().hasAll(['bookingId', 'clientId', 'name', 'status', 'createdAt', 'updatedAt'])
@@ -229,15 +243,17 @@ service cloud.firestore {
     }
 
     match /galleries/{galleryId} {
-      allow get: if isSignedIn() && isValidId(galleryId) && (isAdmin() || existing().clientId == request.auth.uid);
-      allow list: if isSignedIn() && (isAdmin() || resource.data.clientId == request.auth.uid);
-      allow create: if isAdmin() && isValidId(galleryId) && isValidGallery(incoming())
-        && exists(/databases/$(database)/documents/bookings/$(incoming().bookingId));
-      allow update: if isSignedIn() && isValidId(galleryId) && isValidGalleryUpdate(incoming())
-        && (
-          isAdmin() ||
-          (existing().clientId == request.auth.uid && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt']) && incoming().status == 'in_editing' && existing().status == 'awaiting_selection')
-        );
+      allow get: if isSignedIn() && isValidId(galleryId) && (isAdmin() || isGalleryOwner(galleryId) || existing().clientId == request.auth.uid);
+      allow list: if isSignedIn() && (isAdmin() || isGalleryOwner(galleryId) || resource.data.clientId == request.auth.uid);
+      allow create: if isAdmin() && isValidId(galleryId) && (
+        (isValidGallery(incoming()) && exists(/databases/$(database)/documents/bookings/$(incoming().bookingId))) ||
+        isGalleryV2(incoming())
+      );
+      allow update: if isSignedIn() && isValidId(galleryId) && (
+        isAdmin() || 
+        (existing().clientId == request.auth.uid && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt']) && incoming().status == 'in_editing' && existing().status == 'awaiting_selection') ||
+        (isGalleryOwner(galleryId) && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'selectionLockedAt', 'updatedAt']) && existing().status == 'SELECTING' && incoming().status == 'LOCKED')
+      );
       allow delete: if isAdmin() && isValidId(galleryId);
 
       function isValidPhoto(data) {
@@ -249,6 +265,10 @@ service cloud.firestore {
           && data.uploadedAt == request.time;
       }
       
+      function isValidPhotoV2(data) {
+        return data.keys().hasAll(['fileName', 'thumbPath', 'previewPath', 'originalPath', 'width', 'height', 'createdAt', 'processingVersion']);
+      }
+      
       function isValidPhotoUpdate(data) {
         return data.size() >= 4 && data.size() <= 5
           && data.keys().hasAll(['url', 'filename', 'status', 'uploadedAt'])
@@ -258,23 +278,26 @@ service cloud.firestore {
       }
 
       match /photos/{photoId} {
-        allow get: if isSignedIn() && isValidId(photoId) && (
-            isAdmin() || 
-            get(/databases/$(database)/documents/galleries/$(galleryId)).data.clientId == request.auth.uid
-        );
-        allow list: if isSignedIn() && (
-            isAdmin() || 
-            get(/databases/$(database)/documents/galleries/$(galleryId)).data.clientId == request.auth.uid
-        );
-        allow create: if isAdmin() && isValidId(photoId) && isValidPhoto(incoming());
-        allow update: if isSignedIn() && isValidId(photoId) && isValidPhotoUpdate(incoming())
-          && (
+        allow get: if isSignedIn() && isValidId(photoId) && (isAdmin() || isGalleryOwner(galleryId) || get(/databases/$(database)/documents/galleries/$(galleryId)).data.clientId == request.auth.uid);
+        allow list: if isSignedIn() && (isAdmin() || isGalleryOwner(galleryId) || get(/databases/$(database)/documents/galleries/$(galleryId)).data.clientId == request.auth.uid);
+        allow create: if isAdmin() && isValidId(photoId) && (isValidPhoto(incoming()) || isValidPhotoV2(incoming()));
+        allow update: if isSignedIn() && isValidId(photoId) && (
             isAdmin() ||
             (get(/databases/$(database)/documents/galleries/$(galleryId)).data.clientId == request.auth.uid
               && incoming().diff(existing()).affectedKeys().hasOnly(['status'])
               && get(/databases/$(database)/documents/galleries/$(galleryId)).data.status == 'in_selection')
           );
         allow delete: if isAdmin() && isValidId(photoId);
+      }
+
+      match /selections/{photoId} {
+        allow get, list: if isSignedIn() && (isAdmin() || isGalleryOwner(galleryId));
+        allow create: if isGalleryOwner(galleryId) 
+          && get(/databases/$(database)/documents/galleries/$(galleryId)).data.status == 'SELECTING'
+          && incoming().keys().hasAll(['selectedAt', 'selectedBy', 'isExtra', 'extraPrice']);
+        allow delete: if isGalleryOwner(galleryId) 
+          && get(/databases/$(database)/documents/galleries/$(galleryId)).data.status == 'SELECTING';
+        allow update: if isAdmin();
       }
     }
   }

@@ -25,6 +25,7 @@
     "@radix-ui/react-toast": "^1.2.15",
     "@react-pdf/renderer": "^4.5.1",
     "@tailwindcss/vite": "^4.1.14",
+    "@tanstack/react-virtual": "^3.13.25",
     "@vitejs/plugin-react": "^5.0.4",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, lazy, Suspense } from "react";
 import { Download, Clock, Image as ImageIcon, Heart, FileText, ArrowDownToLine, LogOut } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { auth, db } from "../../services/firebase";
@@ -7,8 +7,11 @@ import { collection, query, where, onSnapshot, orderBy } from "firebase/firestor
 import { useAuth } from "../../services/AuthContext";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { ClientGallery } from "../../components/client/ClientGallery";
 import { DocumentDownloader } from "../../components/client/DocumentDownloader";
+import { FEATURES } from "../../config/features";
+import { ErrorBoundary } from "../../components/common/ErrorBoundary";
+
+const ClientGallery = lazy(() => import("../../components/client/ClientGallery").then(m => ({ default: m.ClientGallery })));
 
 export default function ClientDashboard() {
   const navigate = useNavigate();
@@ -84,7 +87,25 @@ export default function ClientDashboard() {
       </div>
 
       {viewingGallery ? (
-         <ClientGallery booking={viewingGallery} onBack={() => setViewingGallery(null)} />
+         <ErrorBoundary componentName="ClientGallery" fallback={
+           <div className="p-12 text-center bg-gray-50 border border-gray-200">
+             <h2 className="text-xl font-bold text-red-600 mb-4">Galeria indisponível no momento</h2>
+             <p className="mb-6 text-gray-600">Estamos realizando atualizações ou ocorreu um erro na galeria. Seu material continua seguro.</p>
+             <button onClick={() => setViewingGallery(null)} className="px-6 py-3 bg-black text-white font-black uppercase text-xs tracking-widest hover:bg-gray-800 transition-colors">Voltar aos Agendamentos</button>
+           </div>
+         }>
+            <Suspense fallback={<div className="p-12 text-center text-gray-500 font-medium">Carregando Galeria...</div>}>
+               {FEATURES.isGalleryV2Enabled(viewingGallery) ? (
+                 <ClientGallery booking={viewingGallery} onBack={() => setViewingGallery(null)} />
+               ) : (
+                 <div className="p-12 text-center bg-gray-50 border border-gray-200">
+                   <h2 className="text-xl font-bold mb-4">Galeria Indisponível</h2>
+                   <p className="mb-6 text-gray-600">A nova experiência de galeria não está ativada para este ensaio.</p>
+                   <button onClick={() => setViewingGallery(null)} className="px-6 py-3 bg-black text-white font-black uppercase text-xs tracking-widest hover:bg-gray-800 transition-colors">Voltar</button>
+                 </div>
+               )}
+            </Suspense>
+         </ErrorBoundary>
       ) : (
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
         {/* Status Card */}
@@ -127,7 +148,7 @@ export default function ClientDashboard() {
                                  </p>
                               </div>
                               <div className="flex flex-col sm:flex-row gap-4 shrink-0 w-full sm:w-auto">
-                                 {booking.status !== 'in_editing' && (
+                                 {booking.status !== 'in_editing' && FEATURES.isGalleryV2Enabled(booking) && (
                                     <button onClick={() => setViewingGallery(booking)} className="bg-white border border-black text-black px-8 py-3 text-xs font-black uppercase tracking-widest hover:bg-gray-50 transition-colors flex items-center justify-center gap-2">
                                        <ImageIcon className="w-4 h-4" /> {booking.status === 'in_selection' ? 'Começar Seleção' : 'Ver Galeria'}
                                     </button>

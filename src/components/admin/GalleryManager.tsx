@@ -1,8 +1,12 @@
-import { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, Suspense } from "react";
 import { ArrowLeft, Upload, Trash2, CheckCircle, Clock, Image as ImageIcon } from "lucide-react";
 import { db, storage } from "../../services/firebase";
 import { collection, query, onSnapshot, doc, setDoc, deleteDoc, serverTimestamp, getDoc } from "firebase/firestore";
 import { ref, uploadBytesResumable, getDownloadURL, deleteObject } from "firebase/storage";
+import { FEATURES } from "../../config/features";
+import { FeatureErrorBoundary } from "../common/FeatureErrorBoundary";
+
+const GalleryUploadManager = React.lazy(() => import("./gallery/GalleryUploadManager").then(module => ({ default: module.GalleryUploadManager })));
 
 export function GalleryManager({ booking, client, onBack }: { booking: any, client: any, onBack: () => void }) {
   const [photos, setPhotos] = useState<any[]>([]);
@@ -140,6 +144,19 @@ export function GalleryManager({ booking, client, onBack }: { booking: any, clie
       </div>
 
       <div className="bg-white border border-gray-200 p-8">
+         {FEATURES.enableGalleryV2 && booking.galleryEnabled !== false && (
+            <div className="mb-12">
+               <FeatureErrorBoundary componentName="GalleryUploadManager">
+                 <Suspense fallback={<div className="text-sm text-gray-500">Carregando gerenciador de upload...</div>}>
+                    <GalleryUploadManager bookingId={booking.id} />
+                 </Suspense>
+               </FeatureErrorBoundary>
+            </div>
+         )}
+         
+         <div className="flex justify-between items-end mb-8">
+            <h3 className="font-bold uppercase tracking-widest text-sm text-gray-400">Galeria V1 (Legado)</h3>
+         </div>
          {loading ? (
             <div className="text-center text-gray-500 py-12 font-medium">Carregando fotos...</div>
          ) : photos.length === 0 ? (
