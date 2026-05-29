@@ -11,6 +11,8 @@ import { ErrorBoundary } from "../../components/common/ErrorBoundary";
 import { FEATURES } from "../../config/features";
 import { CMSManager } from "../../components/admin/CMSManager";
 import { ReceiptManagerModal } from "../../components/admin/ReceiptManagerModal";
+import { CleanupManager } from "../../components/admin/CleanupManager";
+import { FinancesManager } from "../../components/admin/FinancesManager";
 
 const GalleryManager = lazy(() => import("../../components/admin/GalleryManager").then(m => ({ default: m.GalleryManager })));
 
@@ -380,15 +382,17 @@ export default function AdminDashboard() {
         {activeTab === "settings" && (
           <div className="animate-in fade-in">
             <h1 className="font-black text-3xl tracking-tighter uppercase mb-8">CMS & Configurações</h1>
+            
+            <div className="mb-12">
+               <CleanupManager />
+            </div>
+
             <CMSManager />
           </div>
         )}
 
         {activeTab === "finances" && (
-          <div className="h-full flex flex-col items-center justify-center text-gray-400">
-            <h2 className="text-2xl font-black uppercase tracking-widest mb-4">Módulo em Desenvolvimento</h2>
-            <p className="text-sm font-medium">Esta funcionalidade será ativada na próxima fase.</p>
-          </div>
+          <FinancesManager bookings={bookings} clients={clients} />
         )}
 
       </main>

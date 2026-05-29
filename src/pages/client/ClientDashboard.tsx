@@ -154,9 +154,15 @@ export default function ClientDashboard() {
                                     </button>
                                  )}
                                  {['ready', 'completed'].includes(booking.status) && (
-                                    <button className="bg-black text-white px-8 py-3 text-xs font-black uppercase tracking-widest hover:bg-gray-800 transition-colors flex items-center justify-center gap-2">
-                                       <Download className="w-4 h-4" /> Download ZIP
-                                    </button>
+                                    booking.downloadLink ? (
+                                       <a href={booking.downloadLink} target="_blank" rel="noopener noreferrer" className="bg-black text-white px-8 py-3 text-xs font-black uppercase tracking-widest hover:bg-gray-800 transition-colors flex items-center justify-center gap-2">
+                                          <Download className="w-4 h-4" /> Baixar Fotos
+                                       </a>
+                                    ) : (
+                                       <div className="text-gray-500 px-6 py-3 border border-gray-200 bg-gray-50 text-xs font-bold uppercase tracking-widest text-center">
+                                          Material ainda não disponibilizado
+                                       </div>
+                                    )
                                  )}
                               </div>
                            </div>
@@ -198,44 +204,33 @@ export default function ClientDashboard() {
 
         {/* Sidebar */}
         <div className="lg:col-span-4 space-y-8">
-          <div className="bg-gray-50 border border-gray-200 p-8">
-            <h2 className="font-black uppercase tracking-widest text-sm mb-6 border-b border-gray-200 pb-4">Seus Guias</h2>
-            <ul className="space-y-4">
-              <li>
-                <a href="#" className="flex items-center gap-3 text-sm font-medium hover:text-gray-500 transition-colors">
-                  <ArrowDownToLine className="w-4 h-4 shrink-0" />
-                  Guia de Cuidados e Looks (PDF)
-                </a>
-              </li>
-            </ul>
-          </div>
-
           <div className="space-y-6">
             <h2 className="font-black tracking-tight uppercase text-xl">Download de Arquivos</h2>
             <p className="text-xs font-bold uppercase text-red-600 bg-red-50 p-4 border border-red-100">Atenção: As fotos ficarão disponíveis por apenas 15 dias.</p>
             
             <div className="bg-gray-50 border border-gray-200 group overflow-hidden">
-              <div className="aspect-[4/3] bg-gray-200 relative overflow-hidden">
-                <img 
-                  src="https://images.unsplash.com/photo-1511285560929-80b456fea0bc?q=80&w=600&auto=format&fit=crop" 
-                  alt="Ensaio Casal" 
-                  className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105"
-                />
-                <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                  <button className="bg-white text-black px-6 py-3 text-xs font-black uppercase tracking-widest hover:bg-gray-200 transition-colors flex items-center gap-2 mb-3">
-                    <Download className="w-4 h-4" /> Download ZIP
-                  </button>
-                  <button className="border border-white/80 text-white px-6 py-3 text-xs font-black uppercase tracking-widest hover:bg-white hover:text-black transition-colors">
-                    Ver Galeria
-                  </button>
+              <div className="aspect-[4/3] bg-white border-b border-gray-200 relative flex flex-col items-center justify-center p-8 transition-colors">
+                <div className="w-24 h-24 bg-gray-50 rounded-full flex items-center justify-center mb-6 group-hover:bg-black transition-colors duration-300">
+                  <Download className="w-10 h-10 text-gray-300 group-hover:text-white transition-colors duration-300" />
                 </div>
+                {(() => {
+                  const downloadBooking = bookings.find(b => ['ready', 'completed'].includes(b.status));
+                  if (downloadBooking && downloadBooking.downloadLink) {
+                     return (
+                        <a href={downloadBooking.downloadLink} target="_blank" rel="noopener noreferrer" className="bg-black text-white px-8 py-3 text-xs font-black uppercase tracking-widest hover:bg-gray-800 transition-colors flex items-center gap-2">
+                          <Download className="w-4 h-4" /> Baixar Fotos
+                        </a>
+                     );
+                  }
+                  return (
+                     <div className="text-gray-500 font-bold uppercase text-[10px] tracking-widest text-center px-4">
+                        Material ainda não disponibilizado
+                     </div>
+                  );
+                })()}
               </div>
-              <div className="p-6">
-                <h3 className="font-black uppercase tracking-tight mb-2">Ensaio Casal Editorial</h3>
-                <div className="flex justify-between items-center text-xs text-gray-500 font-bold uppercase tracking-widest">
-                  <span>30 fotos</span>
-                  <span>Expira em 5 dias</span>
-                </div>
+              <div className="p-6 flex justify-center items-center">
+                <span className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">Expira em 15 dias</span>
               </div>
             </div>
           </div>

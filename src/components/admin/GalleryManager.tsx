@@ -1,42 +1,17 @@
-import React, { useState, useEffect, useRef, Suspense } from "react";
-import { ArrowLeft, Upload, Trash2, CheckCircle, Clock, Image as ImageIcon } from "lucide-react";
+import React, { useState, useEffect, Suspense } from "react";
+import { ArrowLeft, Trash2, CheckCircle, Save, ImageIcon, ExternalLink } from "lucide-react";
 import { db, storage } from "../../services/firebase";
-import { collection, query, onSnapshot, doc, setDoc, deleteDoc, serverTimestamp, getDoc } from "firebase/firestore";
-import { ref, uploadBytesResumable, getDownloadURL, deleteObject } from "firebase/storage";
+import { collection, query, onSnapshot, doc, deleteDoc, updateDoc } from "firebase/firestore";
+import { ref, deleteObject } from "firebase/storage";
 import { FEATURES } from "../../config/features";
-import { FeatureErrorBoundary } from "../common/FeatureErrorBoundary";
-
-const GalleryUploadManager = React.lazy(() => import("./gallery/GalleryUploadManager").then(module => ({ default: module.GalleryUploadManager })));
 
 export function GalleryManager({ booking, client, onBack }: { booking: any, client: any, onBack: () => void }) {
   const [photos, setPhotos] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [uploading, setUploading] = useState(false);
-  const [progress, setProgress] = useState(0);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [downloadLink, setDownloadLink] = useState(booking.downloadLink || "");
+  const [savingLink, setSavingLink] = useState(false);
 
   useEffect(() => {
-    // Ensure gallery doc exists (we use bookingId as galleryId for simplicity)
-    const initGallery = async () => {
-      const galleryRef = doc(db, "galleries", booking.id);
-      const snap = await getDoc(galleryRef);
-      if (!snap.exists()) {
-         try {
-            await setDoc(galleryRef, {
-               bookingId: booking.id,
-               clientId: booking.clientId,
-               name: booking.packageName,
-               status: 'in_selection',
-               createdAt: serverTimestamp(),
-               updatedAt: serverTimestamp()
-            });
-         } catch (error) {
-            console.error("Failed to initialize gallery document:", error);
-         }
-      }
-    };
-    initGallery();
-
     const photosRef = collection(db, "galleries", booking.id, "photos");
     const qPhotos = query(photosRef);
     
@@ -46,67 +21,41 @@ export function GalleryManager({ booking, client, onBack }: { booking: any, clie
     });
 
     return () => unsubscribe();
-  }, [booking.id, booking.clientId, booking.packageName]);
-
-  const handleUpload = async (e: import("react").ChangeEvent<HTMLInputElement>) => {
-    if (!e.target.files || e.target.files.length === 0) return;
-    
-    setUploading(true);
-    setProgress(0);
-    const files: File[] = Array.from(e.target.files);
-    
-    try {
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-        const fileRef = ref(storage, `galleries/${booking.id}/${file.name}-${Date.now()}`);
-        const uploadTask = uploadBytesResumable(fileRef, file as Blob);
-        
-        await new Promise<void>((resolve, reject) => {
-          uploadTask.on('state_changed', 
-            (snapshot) => {
-              const currentProgress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-              setProgress(currentProgress);
-            },
-            (error) => reject(error),
-            async () => {
-              const url = await getDownloadURL(uploadTask.snapshot.ref);
-              
-              const photoRef = doc(collection(db, "galleries", booking.id, "photos"));
-              await setDoc(photoRef, {
-                url,
-                filename: file.name,
-                status: 'raw',
-                uploadedAt: serverTimestamp()
-              });
-              
-              resolve();
-            }
-          );
-        });
-      }
-    } catch (error) {
-      console.error("Upload error:", error);
-      alert("Erro ao enviar fotos. Tente novamente.");
-    } finally {
-      setUploading(false);
-      setProgress(0);
-      if (fileInputRef.current) fileInputRef.current.value = "";
-    }
-  };
+  }, [booking.id]);
 
   const handleDelete = async (photo: any) => {
     if (!confirm("Tem certeza que deseja excluir esta foto?")) return;
     
     try {
-      // Create a reference to the file to delete
-      const fileRef = ref(storage, photo.url);
-      await deleteObject(fileRef);
+      if (photo.url) {
+         const fileRef = ref(storage, photo.url);
+         await deleteObject(fileRef);
+      }
       
-      // Delete document
       await deleteDoc(doc(db, "galleries", booking.id, "photos", photo.id));
     } catch (error) {
       console.error("Delete error:", error);
       alert("Erro ao excluir foto.");
+    }
+  };
+
+  const handleSaveLink = async () => {
+    if (downloadLink && !downloadLink.startsWith('http://') && !downloadLink.startsWith('https://')) {
+      alert("O link de download deve ser uma URL válida começando com http:// ou https://");
+      return;
+    }
+    
+    setSavingLink(true);
+    try {
+      await updateDoc(doc(db, "bookings", booking.id), {
+        downloadLink: downloadLink
+      });
+      alert("Link de download salvo com sucesso!");
+    } catch (error) {
+       console.error("Error saving link", error);
+       alert("Erro ao salvar o link de download.");
+    } finally {
+       setSavingLink(false);
     }
   };
 
@@ -122,72 +71,66 @@ export function GalleryManager({ booking, client, onBack }: { booking: any, clie
                <p className="text-sm font-medium text-gray-500">{booking.packageName}</p>
             </div>
          </div>
+      </div>
+
+      {/* Novo Sistema de Entrega de Fotos via Link */}
+      <div className="bg-white border border-gray-200 p-8">
+         <h3 className="font-black text-xl tracking-tight uppercase mb-2">Link de Entrega</h3>
+         <p className="text-sm text-gray-500 font-medium mb-6 max-w-2xl">
+            Insira abaixo o link de acesso aos arquivos finais do ensaio (Google Drive, OneDrive, WeTransfer, etc). Este link será exibido para o cliente na área de download.
+         </p>
          
-         <div className="flex gap-4">
-            <input 
-               type="file" 
-               multiple 
-               accept="image/*" 
-               className="hidden" 
-               ref={fileInputRef}
-               onChange={handleUpload}
-            />
+         <div className="flex flex-col md:flex-row gap-4 items-start">
+            <div className="w-full flex-1 relative">
+               <input 
+                 type="text" 
+                 placeholder="https://exemplo.com/download..." 
+                 value={downloadLink}
+                 onChange={(e) => setDownloadLink(e.target.value)}
+                 className="w-full border border-gray-200 p-4 font-medium text-sm outline-none focus:border-black transition-colors"
+               />
+               <ExternalLink className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            </div>
             <button 
-               disabled={uploading}
-               onClick={() => fileInputRef.current?.click()} 
-               className="bg-black text-white px-6 py-3 text-xs font-black uppercase tracking-widest flex items-center gap-2 hover:bg-gray-800 transition-colors disabled:opacity-50"
+               onClick={handleSaveLink}
+               disabled={savingLink}
+               className="bg-black text-white px-8 py-4 text-xs font-black uppercase tracking-widest hover:bg-gray-800 transition-colors flex items-center gap-2 whitespace-nowrap disabled:opacity-50"
             >
-               <Upload className="w-4 h-4" /> 
-               {uploading ? `Enviando (${Math.round(progress)}%)` : "Upload de Fotos"}
+               <Save className="w-4 h-4" />
+               {savingLink ? 'Salvando...' : 'Salvar Link'}
             </button>
          </div>
       </div>
 
-      <div className="bg-white border border-gray-200 p-8">
-         {FEATURES.enableGalleryV2 && booking.galleryEnabled !== false && (
-            <div className="mb-12">
-               <FeatureErrorBoundary componentName="GalleryUploadManager">
-                 <Suspense fallback={<div className="text-sm text-gray-500">Carregando gerenciador de upload...</div>}>
-                    <GalleryUploadManager bookingId={booking.id} />
-                 </Suspense>
-               </FeatureErrorBoundary>
-            </div>
-         )}
-         
-         <div className="flex justify-between items-end mb-8">
-            <h3 className="font-bold uppercase tracking-widest text-sm text-gray-400">Galeria V1 (Legado)</h3>
-         </div>
-         {loading ? (
-            <div className="text-center text-gray-500 py-12 font-medium">Carregando fotos...</div>
-         ) : photos.length === 0 ? (
-            <div className="text-center py-20 border-2 border-dashed border-gray-200">
-               <ImageIcon className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-               <p className="font-bold text-gray-600 mb-2 uppercase tracking-wide">Galeria Vazia</p>
-               <p className="text-sm text-gray-500 font-medium max-w-sm mx-auto">Faça upload das fotos em alta resolução para que a cliente possa realizar a seleção.</p>
-            </div>
-         ) : (
-            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
-               {photos.map(photo => (
-                  <div key={photo.id} className="group relative aspect-square bg-gray-100 border border-gray-200 overflow-hidden">
-                     <img src={photo.url} alt={photo.filename} className="w-full h-full object-cover" loading="lazy" />
-                     <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-3">
-                        {photo.status === 'selected_by_client' && (
-                           <span className="bg-green-500 text-white p-2 rounded-full mb-2">
-                              <CheckCircle className="w-4 h-4" />
-                           </span>
-                        )}
-                        <button onClick={() => handleDelete(photo)} className="bg-white text-red-600 p-2 hover:bg-red-50 transition-colors" title="Excluir">
-                           <Trash2 className="w-4 h-4" />
-                        </button>
-                     </div>
-                     {photo.status === 'selected_by_client' && (
-                        <div className="absolute top-2 right-2 w-3 h-3 bg-green-500 rounded-full border-2 border-white shadow-sm" />
-                     )}
-                  </div>
-               ))}
-            </div>
-         )}
-      </div>
+      {/* Renderização de Galerias Legadas caso existam fotos - Mantido para compatibilidade */}
+      {(photos.length > 0) && (
+        <div className="bg-white border border-gray-200 p-8">
+           <div className="flex justify-between items-end mb-8">
+              <h3 className="font-bold uppercase tracking-widest text-sm text-gray-400">Galeria (Legado Registrado)</h3>
+           </div>
+           
+           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+              {photos.map(photo => (
+                 <div key={photo.id} className="group relative aspect-square bg-gray-100 border border-gray-200 overflow-hidden">
+                    <img src={photo.url || photo.thumbPath} alt={photo.fileName || photo.filename} className="w-full h-full object-cover" loading="lazy" />
+                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-3">
+                       {photo.status === 'selected_by_client' && (
+                          <span className="bg-green-500 text-white p-2 rounded-full mb-2">
+                             <CheckCircle className="w-4 h-4" />
+                          </span>
+                       )}
+                       <button onClick={() => handleDelete(photo)} className="bg-white text-red-600 p-2 hover:bg-red-50 transition-colors" title="Excluir">
+                          <Trash2 className="w-4 h-4" />
+                       </button>
+                    </div>
+                    {photo.status === 'selected_by_client' && (
+                       <div className="absolute top-2 right-2 w-3 h-3 bg-green-500 rounded-full border-2 border-white shadow-sm" />
+                    )}
+                 </div>
+              ))}
+           </div>
+        </div>
+      )}
     </div>
   );
 }
