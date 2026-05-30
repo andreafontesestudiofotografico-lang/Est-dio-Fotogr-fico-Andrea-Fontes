@@ -13,17 +13,45 @@ export function CleanupManager() {
       setStep("cleaning"); // temporarily just to show loading
       setError(null);
       
-      const bookingsSnap = await getDocs(collection(db, "bookings"));
-      const galleriesSnap = await getDocs(collection(db, "galleries"));
+      console.log("Analisando bookings...");
+      let bookingsSnap;
+      try {
+         bookingsSnap = await getDocs(collection(db, "bookings"));
+      } catch (e: any) {
+         console.error("Falha ao analisar bookings:", e.code, e.message, e);
+         throw e;
+      }
+
+      console.log("Analisando galleries...");
+      let galleriesSnap;
+      try {
+         galleriesSnap = await getDocs(collection(db, "galleries"));
+      } catch (e: any) {
+         console.error("Falha ao analisar galleries:", e.code, e.message, e);
+         throw e;
+      }
       
       let photoCount = 0;
       let selectionCount = 0;
 
       for (const galleryDoc of galleriesSnap.docs) {
-         const photosSnap = await getDocs(collection(db, "galleries", galleryDoc.id, "photos"));
-         const selectionsSnap = await getDocs(collection(db, "galleries", galleryDoc.id, "selections"));
-         photoCount += photosSnap.size;
-         selectionCount += selectionsSnap.size;
+         console.log(`Analisando galleries/${galleryDoc.id}/photos...`);
+         try {
+            const photosSnap = await getDocs(collection(db, "galleries", galleryDoc.id, "photos"));
+            photoCount += photosSnap.size;
+         } catch (e: any) {
+            console.error(`Falha ao analisar galleries/${galleryDoc.id}/photos:`, e.code, e.message, e);
+            throw e;
+         }
+
+         console.log(`Analisando galleries/${galleryDoc.id}/selections...`);
+         try {
+            const selectionsSnap = await getDocs(collection(db, "galleries", galleryDoc.id, "selections"));
+            selectionCount += selectionsSnap.size;
+         } catch (e: any) {
+            console.error(`Falha ao analisar galleries/${galleryDoc.id}/selections:`, e.code, e.message, e);
+            throw e;
+         }
       }
 
       setCounts({

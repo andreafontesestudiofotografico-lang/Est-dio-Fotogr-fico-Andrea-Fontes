@@ -291,12 +291,12 @@ service cloud.firestore {
       }
 
       match /selections/{photoId} {
-        allow get, list: if isSignedIn() && (isAdmin() || isGalleryOwner(galleryId));
+        allow get, list: if isSignedIn() && (isAdmin() || isGalleryOwner(galleryId) || get(/databases/$(database)/documents/galleries/$(galleryId)).data.clientId == request.auth.uid);
         allow create: if isGalleryOwner(galleryId) 
           && get(/databases/$(database)/documents/galleries/$(galleryId)).data.status == 'SELECTING'
           && incoming().keys().hasAll(['selectedAt', 'selectedBy', 'isExtra', 'extraPrice']);
-        allow delete: if isGalleryOwner(galleryId) 
-          && get(/databases/$(database)/documents/galleries/$(galleryId)).data.status == 'SELECTING';
+        allow delete: if isAdmin() || (isGalleryOwner(galleryId) 
+          && get(/databases/$(database)/documents/galleries/$(galleryId)).data.status == 'SELECTING');
         allow update: if isAdmin();
       }
     }
